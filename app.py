@@ -356,11 +356,13 @@ if st.button(
                     f"{U:.6f} {unidade}"
                 )
 
-            # ==========================
-            # GRÁFICO
+  # ==========================
+            # GRÁFICO — ONDA SENOIDAL
             # ==========================
 
             st.divider()
+
+            import plotly.graph_objects as go
 
             total = (
                 u_a**2 +
@@ -369,52 +371,180 @@ if st.button(
                 u_deriva**2
             )
 
-            dados = pd.DataFrame(
-                {
-                    "Fonte": [
-                        "Tipo A",
-                        "Certificado",
-                        "Resolução",
-                        "Deriva"
-                    ],
-                    "Percentual": [
-                        (u_a**2 / total) * 100,
-                        (u_certificado**2 / total) * 100,
-                        (u_resolucao**2 / total) * 100,
-                        (u_deriva**2 / total) * 100
-                    ]
-                }
-            )
+            if total > 0:
 
-            fig = px.pie(
-                dados,
-                names="Fonte",
-                values="Percentual",
-                hole=0.45,
-                title="Contribuição das Fontes de Incerteza"
-            )
+                fontes = [
+                    "Tipo A",
+                    "Certificado",
+                    "Resolução",
+                    "Deriva"
+                ]
 
-            fig.update_traces(
-                marker=dict(
-                    colors=[
-                        "#000000",
-                        "#3B3B3B",
-                        "#707070",
-                        "#BDBDBD"
-                    ]
+                percentuais = [
+                    (u_a**2 / total) * 100,
+                    (u_certificado**2 / total) * 100,
+                    (u_resolucao**2 / total) * 100,
+                    (u_deriva**2 / total) * 100
+                ]
+
+                # Cores
+                cores = [
+                    "#730000",
+                    "#C62828",
+                    "#F57C00",
+                    "#1565C0"
+                ]
+
+                # Espaçamento entre cada fonte
+                espacamento = 2 * np.pi
+
+                # Pontos por trecho
+                pontos_por_trecho = 250
+
+                fig = go.Figure()
+
+                for i, fonte in enumerate(fontes):
+
+                    inicio = i * espacamento
+                    fim = (i + 1) * espacamento
+
+                    x_trecho = np.linspace(
+                        inicio,
+                        fim,
+                        pontos_por_trecho
+                    )
+
+                    # Amplitude proporcional à contribuição
+                    if max(percentuais) > 0:
+
+                        amplitude = (
+                            percentuais[i]
+                            / max(percentuais)
+                        ) * 2
+
+                    else:
+
+                        amplitude = 0
+
+                    # Onda senoidal
+                    y_trecho = (
+                        amplitude *
+                        np.sin(x_trecho - inicio)
+                    )
+
+                    fig.add_trace(
+                        go.Scatter(
+                            x=x_trecho,
+                            y=y_trecho,
+                            mode="lines",
+                            name=(
+                                f"{fonte} — "
+                                f"{percentuais[i]:.2f}%"
+                            ),
+                            line=dict(
+                                color=cores[i],
+                                width=5,
+                                shape="spline"
+                            )
+                        )
+                    )
+
+                    # Linha separadora
+                    if i < len(fontes) - 1:
+
+                        fig.add_vline(
+                            x=fim,
+                            line_width=1,
+                            line_dash="dot",
+                            line_color="#CCCCCC"
+                        )
+
+                # ==========================
+                # CONFIGURAÇÃO DO GRÁFICO
+                # ==========================
+
+                fig.update_layout(
+
+                    title=dict(
+                        text=(
+                            "Contribuição das "
+                            "Fontes de Incerteza"
+                        ),
+                        font=dict(
+                            size=22,
+                            color="#730000"
+                        ),
+                        x=0.5
+                    ),
+
+                    xaxis=dict(
+                        title="Fontes de Incerteza",
+
+                        tickmode="array",
+
+                        tickvals=[
+                            espacamento * 0.5,
+                            espacamento * 1.5,
+                            espacamento * 2.5,
+                            espacamento * 3.5
+                        ],
+
+                        ticktext=fontes,
+
+                        showgrid=False,
+                        zeroline=False
+                    ),
+
+                    yaxis=dict(
+                        title="Amplitude relativa",
+
+                        showgrid=True,
+
+                        gridcolor="#E5E5E5",
+
+                        zeroline=True,
+
+                        zerolinecolor="#999999"
+                    ),
+
+                    paper_bgcolor="white",
+
+                    plot_bgcolor="white",
+
+                    height=500,
+
+                    margin=dict(
+                        l=70,
+                        r=40,
+                        t=80,
+                        b=100
+                    ),
+
+                    legend=dict(
+                        orientation="h",
+
+                        yanchor="bottom",
+
+                        y=-0.25,
+
+                        xanchor="center",
+
+                        x=0.5
+                    )
                 )
-            )
 
-            fig.update_layout(
-                paper_bgcolor="white",
-                plot_bgcolor="white"
-            )
+                st.plotly_chart(
+                    fig,
+                    use_container_width=True
+                )
 
-            st.plotly_chart(
-                fig,
-                use_container_width=True
-            )
+            else:
 
+                st.warning(
+                    "Não foi possível gerar o gráfico "
+                    "porque as fontes de incerteza "
+                    "possuem contribuição zero."
+                )
             # ==========================
             # LEITURA DO GRÁFICO
             # ==========================
