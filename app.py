@@ -4,7 +4,6 @@ import pandas as pd
 import plotly.express as px
 import datetime
 
-
 st.set_page_config(
     page_title="MMG",
     page_icon="⚙️",
@@ -42,6 +41,28 @@ section[data-testid="stSidebar"] *{
     border-radius:15px;
     border-left:6px solid #730000;
     box-shadow:0px 4px 10px rgba(0,0,0,0.10);
+}
+
+/* Cards de contribuição */
+
+.card-tipo-a [data-testid="stMetric"]{
+    background-color:#730000 !important;
+    border-left:6px solid #4A0000 !important;
+}
+
+.card-certificado [data-testid="stMetric"]{
+    background-color:#C62828 !important;
+    border-left:6px solid #8E0000 !important;
+}
+
+.card-resolucao [data-testid="stMetric"]{
+    background-color:#F57C00 !important;
+    border-left:6px solid #C25E00 !important;
+}
+
+.card-deriva [data-testid="stMetric"]{
+    background-color:#1565C0 !important;
+    border-left:6px solid #0D47A1 !important;
 }
 
 /* Botões */
