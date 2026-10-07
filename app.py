@@ -367,22 +367,16 @@ if st.button(
 </div>
 """, unsafe_allow_html=True)
 
-            st.divider()
+            with st.expander(
+                "🔍 Detalhes do cálculo"
+            ):
 
-            c1, c2 = st.columns(2)
-
-            with c1:
-
-                st.metric(
-                    "Incerteza Combinada (Uc)",
-                    f"{uc:.6f}"
+                st.write(
+                    f"Incerteza Combinada (Uc): {uc:.2f} {unidade}"
                 )
 
-            with c2:
-
-                st.metric(
-                    "Incerteza Expandida (U)",
-                    f"{U:.6f} {unidade}"
+                st.write(
+                    f"Fator de abrangência (k): {k:.3f}"
                 )
 
             # ==========================
