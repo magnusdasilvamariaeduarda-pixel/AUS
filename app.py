@@ -607,7 +607,7 @@ if st.button(
                     "mais influencia a incerteza combinada."
                 )
 
-         # ==========================
+                # ==========================
                 # CONTRIBUIÇÃO INDIVIDUAL
                 # ==========================
 
@@ -620,125 +620,77 @@ if st.button(
                 with c1:
 
                     st.markdown(
-                        f"""
+                        """
                         <div style="
+                            height: 6px;
                             background-color: #730000;
-                            padding: 18px;
-                            border-radius: 15px;
-                            text-align: center;
-                            color: white;
-                            box-shadow: 0 4px 10px rgba(0,0,0,0.15);
-                        ">
-                            <div style="
-                                font-size: 16px;
-                                font-weight: bold;
-                            ">
-                                Tipo A
-                            </div>
-
-                            <div style="
-                                font-size: 28px;
-                                font-weight: bold;
-                                margin-top: 8px;
-                            ">
-                                {percentuais[0]:.2f}%
-                            </div>
-                        </div>
+                            border-radius: 10px 10px 0 0;
+                            margin-bottom: -1px;
+                        "></div>
                         """,
                         unsafe_allow_html=True
+                    )
+
+                    st.metric(
+                        "Tipo A",
+                        f"{percentuais[0]:.2f}%"
                     )
 
                 with c2:
 
                     st.markdown(
-                        f"""
+                        """
                         <div style="
+                            height: 6px;
                             background-color: #C62828;
-                            padding: 18px;
-                            border-radius: 15px;
-                            text-align: center;
-                            color: white;
-                            box-shadow: 0 4px 10px rgba(0,0,0,0.15);
-                        ">
-                            <div style="
-                                font-size: 16px;
-                                font-weight: bold;
-                            ">
-                                Certificado
-                            </div>
-
-                            <div style="
-                                font-size: 28px;
-                                font-weight: bold;
-                                margin-top: 8px;
-                            ">
-                                {percentuais[1]:.2f}%
-                            </div>
-                        </div>
+                            border-radius: 10px 10px 0 0;
+                            margin-bottom: -1px;
+                        "></div>
                         """,
                         unsafe_allow_html=True
+                    )
+
+                    st.metric(
+                        "Certificado",
+                        f"{percentuais[1]:.2f}%"
                     )
 
                 with c3:
 
                     st.markdown(
-                        f"""
+                        """
                         <div style="
+                            height: 6px;
                             background-color: #F57C00;
-                            padding: 18px;
-                            border-radius: 15px;
-                            text-align: center;
-                            color: white;
-                            box-shadow: 0 4px 10px rgba(0,0,0,0.15);
-                        ">
-                            <div style="
-                                font-size: 16px;
-                                font-weight: bold;
-                            ">
-                                Resolução
-                            </div>
-
-                            <div style="
-                                font-size: 28px;
-                                font-weight: bold;
-                                margin-top: 8px;
-                            ">
-                                {percentuais[2]:.2f}%
-                            </div>
-                        </div>
+                            border-radius: 10px 10px 0 0;
+                            margin-bottom: -1px;
+                        "></div>
                         """,
                         unsafe_allow_html=True
+                    )
+
+                    st.metric(
+                        "Resolução",
+                        f"{percentuais[2]:.2f}%"
                     )
 
                 with c4:
 
                     st.markdown(
-                        f"""
+                        """
                         <div style="
+                            height: 6px;
                             background-color: #1565C0;
-                            padding: 18px;
-                            border-radius: 15px;
-                            text-align: center;
-                            color: white;
-                            box-shadow: 0 4px 10px rgba(0,0,0,0.15);
-                        ">
-                            <div style="
-                                font-size: 16px;
-                                font-weight: bold;
-                            ">
-                                Deriva
-                            </div>
-
-                            <div style="
-                                font-size: 28px;
-                                font-weight: bold;
-                                margin-top: 8px;
-                            ">
-                                {percentuais[3]:.2f}%
-                            </div>
-                        </div>
+                            border-radius: 10px 10px 0 0;
+                            margin-bottom: -1px;
+                        "></div>
                         """,
                         unsafe_allow_html=True
+                    )
+
+                    st.metric(
+                        "Deriva",
+                        f"{percentuais[3]:.2f}%"
                     )
 
             else:
