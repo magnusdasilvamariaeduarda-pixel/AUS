@@ -352,60 +352,20 @@ if st.button(
             # RESULTADOS
             # ==========================
 
-            st.subheader("Resultados")
-
-            st.markdown(f"""
-            <div style="
-                background:linear-gradient(135deg,#730000,#C62828);
-                padding:30px;
-                border-radius:20px;
-                color:white;
-                text-align:center;
-                margin-bottom:20px;
-            ">
-                <h3 style="color:white;">
-                    RESULTADO FINAL
-                </h3>
-
-                <h1 style="color:white;">
-                    {media:.2f} ± {U:.2f} {unidade}
-                </h1>
-
-                <p style="color:white;">
-                    Nível de confiança: {confianca}
-                </p>
-
-            </div>
-            """, unsafe_allow_html=True)
-            r1, r2, r3, r4 = st.columns(4)
-
-            with r1:
-
-                st.metric(
-                    "Valor Médio",
-                    f"{media:.6f}"
-                )
-
-            with r2:
-
-                st.metric(
-                    "Desvio Padrão",
-                    f"{desvio:.6f}"
-                )
-
-            with r3:
-
-                st.metric(
-                    "Tipo A",
-                    f"{u_a:.6f}"
-                )
-
-            with r4:
-
-                st.metric(
-                    "Tipo B",
-                    f"{u_b:.6f}"
-                )
+          st.markdown(f"""
+<div style="
+    background:#730000;
+    padding:25px;
+    border-radius:20px;
+    color:white;
+    text-align:center;
+    margin-bottom:20px;
+">
+    <h1 style="color:white;">
+        {media:.2f} ± {U:.2f} {unidade}
+    </h1>
+</div>
+""", unsafe_allow_html=True)
 
             st.divider()
 
