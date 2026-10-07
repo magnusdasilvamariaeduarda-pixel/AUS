@@ -43,28 +43,31 @@ section[data-testid="stSidebar"] *{
     box-shadow:0px 4px 10px rgba(0,0,0,0.10);
 }
 
-/* Cards de contribuição */
+/* Cards da contribuição */
 
 .card-tipo-a [data-testid="stMetric"]{
-    background-color:#730000 !important;
-    border-left:6px solid #4A0000 !important;
+    background: #730000;
+    color: white;
+    border-left: 8px solid #730000;
 }
 
 .card-certificado [data-testid="stMetric"]{
-    background-color:#C62828 !important;
-    border-left:6px solid #8E0000 !important;
+    background: #C62828;
+    color: white;
+    border-left: 8px solid #C62828;
 }
 
 .card-resolucao [data-testid="stMetric"]{
-    background-color:#F57C00 !important;
-    border-left:6px solid #C25E00 !important;
+    background: #F57C00;
+    color: white;
+    border-left: 8px solid #F57C00;
 }
 
 .card-deriva [data-testid="stMetric"]{
-    background-color:#1565C0 !important;
-    border-left:6px solid #0D47A1 !important;
+    background: #1565C0;
+    color: white;
+    border-left: 8px solid #1565C0;
 }
-
 /* Botões */
 .stButton button{
     background-color:#730000;
