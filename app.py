@@ -642,14 +642,7 @@ if st.button(
                 with c1:
 
                     st.markdown(
-                        """
-                        <div style="
-                            height: 6px;
-                            background-color: #730000;
-                            border-radius: 10px 10px 0 0;
-                            margin-bottom: -1px;
-                        "></div>
-                        """,
+                        '<div class="card-tipo-a">',
                         unsafe_allow_html=True
                     )
 
@@ -658,17 +651,15 @@ if st.button(
                         f"{percentuais[0]:.2f}%"
                     )
 
+                    st.markdown(
+                        "</div>",
+                        unsafe_allow_html=True
+                    )
+
                 with c2:
 
                     st.markdown(
-                        """
-                        <div style="
-                            height: 6px;
-                            background-color: #C62828;
-                            border-radius: 10px 10px 0 0;
-                            margin-bottom: -1px;
-                        "></div>
-                        """,
+                        '<div class="card-certificado">',
                         unsafe_allow_html=True
                     )
 
@@ -677,17 +668,15 @@ if st.button(
                         f"{percentuais[1]:.2f}%"
                     )
 
+                    st.markdown(
+                        "</div>",
+                        unsafe_allow_html=True
+                    )
+
                 with c3:
 
                     st.markdown(
-                        """
-                        <div style="
-                            height: 6px;
-                            background-color: #F57C00;
-                            border-radius: 10px 10px 0 0;
-                            margin-bottom: -1px;
-                        "></div>
-                        """,
+                        '<div class="card-resolucao">',
                         unsafe_allow_html=True
                     )
 
@@ -696,17 +685,15 @@ if st.button(
                         f"{percentuais[2]:.2f}%"
                     )
 
+                    st.markdown(
+                        "</div>",
+                        unsafe_allow_html=True
+                    )
+
                 with c4:
 
                     st.markdown(
-                        """
-                        <div style="
-                            height: 6px;
-                            background-color: #1565C0;
-                            border-radius: 10px 10px 0 0;
-                            margin-bottom: -1px;
-                        "></div>
-                        """,
+                        '<div class="card-deriva">',
                         unsafe_allow_html=True
                     )
 
@@ -714,6 +701,12 @@ if st.button(
                         "Deriva",
                         f"{percentuais[3]:.2f}%"
                     )
+
+                    st.markdown(
+                        "</div>",
+                        unsafe_allow_html=True
+                    )
+
 
             else:
 
