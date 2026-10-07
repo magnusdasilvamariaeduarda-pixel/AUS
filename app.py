@@ -607,7 +607,7 @@ if st.button(
                     "mais influencia a incerteza combinada."
                 )
 
-                # ==========================
+         # ==========================
                 # CONTRIBUIÇÃO INDIVIDUAL
                 # ==========================
 
@@ -617,30 +617,29 @@ if st.button(
 
                 c1, c2, c3, c4 = st.columns(4)
 
-                # Card Tipo A
                 with c1:
 
                     st.markdown(
                         f"""
                         <div style="
-                            background-color:#730000;
-                            padding:18px;
-                            border-radius:15px;
-                            text-align:center;
-                            color:white;
-                            box-shadow:0px 4px 10px rgba(0,0,0,0.15);
+                            background-color: #730000;
+                            padding: 18px;
+                            border-radius: 15px;
+                            text-align: center;
+                            color: white;
+                            box-shadow: 0 4px 10px rgba(0,0,0,0.15);
                         ">
                             <div style="
-                                font-size:16px;
-                                font-weight:bold;
+                                font-size: 16px;
+                                font-weight: bold;
                             ">
                                 Tipo A
                             </div>
 
                             <div style="
-                                font-size:28px;
-                                font-weight:bold;
-                                margin-top:8px;
+                                font-size: 28px;
+                                font-weight: bold;
+                                margin-top: 8px;
                             ">
                                 {percentuais[0]:.2f}%
                             </div>
@@ -649,30 +648,29 @@ if st.button(
                         unsafe_allow_html=True
                     )
 
-                # Card Certificado
                 with c2:
 
                     st.markdown(
                         f"""
                         <div style="
-                            background-color:#C62828;
-                            padding:18px;
-                            border-radius:15px;
-                            text-align:center;
-                            color:white;
-                            box-shadow:0px 4px 10px rgba(0,0,0,0.15);
+                            background-color: #C62828;
+                            padding: 18px;
+                            border-radius: 15px;
+                            text-align: center;
+                            color: white;
+                            box-shadow: 0 4px 10px rgba(0,0,0,0.15);
                         ">
                             <div style="
-                                font-size:16px;
-                                font-weight:bold;
+                                font-size: 16px;
+                                font-weight: bold;
                             ">
                                 Certificado
                             </div>
 
                             <div style="
-                                font-size:28px;
-                                font-weight:bold;
-                                margin-top:8px;
+                                font-size: 28px;
+                                font-weight: bold;
+                                margin-top: 8px;
                             ">
                                 {percentuais[1]:.2f}%
                             </div>
@@ -681,30 +679,29 @@ if st.button(
                         unsafe_allow_html=True
                     )
 
-                # Card Resolução
                 with c3:
 
                     st.markdown(
                         f"""
                         <div style="
-                            background-color:#F57C00;
-                            padding:18px;
-                            border-radius:15px;
-                            text-align:center;
-                            color:white;
-                            box-shadow:0px 4px 10px rgba(0,0,0,0.15);
+                            background-color: #F57C00;
+                            padding: 18px;
+                            border-radius: 15px;
+                            text-align: center;
+                            color: white;
+                            box-shadow: 0 4px 10px rgba(0,0,0,0.15);
                         ">
                             <div style="
-                                font-size:16px;
-                                font-weight:bold;
+                                font-size: 16px;
+                                font-weight: bold;
                             ">
                                 Resolução
                             </div>
 
                             <div style="
-                                font-size:28px;
-                                font-weight:bold;
-                                margin-top:8px;
+                                font-size: 28px;
+                                font-weight: bold;
+                                margin-top: 8px;
                             ">
                                 {percentuais[2]:.2f}%
                             </div>
@@ -713,30 +710,29 @@ if st.button(
                         unsafe_allow_html=True
                     )
 
-                # Card Deriva
                 with c4:
 
                     st.markdown(
                         f"""
                         <div style="
-                            background-color:#1565C0;
-                            padding:18px;
-                            border-radius:15px;
-                            text-align:center;
-                            color:white;
-                            box-shadow:0px 4px 10px rgba(0,0,0,0.15);
+                            background-color: #1565C0;
+                            padding: 18px;
+                            border-radius: 15px;
+                            text-align: center;
+                            color: white;
+                            box-shadow: 0 4px 10px rgba(0,0,0,0.15);
                         ">
                             <div style="
-                                font-size:16px;
-                                font-weight:bold;
+                                font-size: 16px;
+                                font-weight: bold;
                             ">
                                 Deriva
                             </div>
 
                             <div style="
-                                font-size:28px;
-                                font-weight:bold;
-                                margin-top:8px;
+                                font-size: 28px;
+                                font-weight: bold;
+                                margin-top: 8px;
                             ">
                                 {percentuais[3]:.2f}%
                             </div>
@@ -744,6 +740,22 @@ if st.button(
                         """,
                         unsafe_allow_html=True
                     )
+
+            else:
+
+                st.warning(
+                    "Não foi possível gerar o gráfico "
+                    "porque as fontes de incerteza "
+                    "possuem contribuição zero."
+                )
+
+    except ValueError:
+
+        st.error(
+            "Verifique os valores informados."
+        )
+
+
 # ==========================
 # HISTÓRICO
 # ==========================
