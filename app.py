@@ -545,61 +545,69 @@ if st.button(
                     "porque as fontes de incerteza "
                     "possuem contribuição zero."
                 )
-            # ==========================
+             # ==========================
             # LEITURA DO GRÁFICO
             # ==========================
 
             st.subheader("📖 Leitura do Gráfico")
 
-            maior_fonte = dados.loc[
-                dados["Percentual"].idxmax(),
-                "Fonte"
-            ]
+            st.write(
+                "O gráfico mostra a contribuição percentual de cada "
+                "componente para a incerteza combinada. Quanto maior "
+                "a contribuição, maior é sua influência no resultado "
+                "final da incerteza."
+            )
 
-            maior_percentual = dados["Percentual"].max()
+            # Identifica a maior contribuição
+            indice_maior = np.argmax(percentuais)
 
-            if maior_fonte == "Tipo A":
+            maior_fonte = fontes[indice_maior]
 
-                explicacao = (
-                    "A maior contribuição vem das medições repetidas. "
-                    "Isso indica que a variação observada entre as "
-                    "medições é a principal fonte de incerteza."
-                )
-
-            elif maior_fonte == "Certificado":
-
-                explicacao = (
-                    "A maior contribuição vem do certificado de "
-                    "calibração. A incerteza informada na calibração "
-                    "possui maior influência sobre o resultado."
-                )
-
-            elif maior_fonte == "Resolução":
-
-                explicacao = (
-                    "A maior contribuição vem da resolução do "
-                    "instrumento. A capacidade de leitura possui "
-                    "maior influência sobre a incerteza."
-                )
-
-            else:
-
-                explicacao = (
-                    "A maior contribuição vem da deriva do instrumento. "
-                    "As alterações das características do instrumento "
-                    "ao longo do tempo possuem maior influência."
-                )
-
+            maior_percentual = percentuais[indice_maior]
 
             st.write(
-                f"**Principal contribuição:** {maior_fonte} "
+                f"**Maior contribuição:** {maior_fonte} "
                 f"({maior_percentual:.2f}%)"
             )
 
-            st.write(explicacao)
-            
-    except ValueError:
-        st.error("Verifique os valores informados.")
+            st.write(
+                "A componente com maior percentual é a que mais "
+                "influencia a incerteza combinada e, portanto, "
+                "merece maior atenção caso seja necessário reduzir "
+                "a incerteza do resultado."
+            )
+
+            # ==========================
+            # CONTRIBUIÇÃO INDIVIDUAL
+            # ==========================
+
+            st.write("### 📊 Contribuição de cada componente")
+
+            c1, c2, c3, c4 = st.columns(4)
+
+            with c1:
+                st.metric(
+                    "Tipo A",
+                    f"{percentuais[0]:.2f}%"
+                )
+
+            with c2:
+                st.metric(
+                    "Certificado",
+                    f"{percentuais[1]:.2f}%"
+                )
+
+            with c3:
+                st.metric(
+                    "Resolução",
+                    f"{percentuais[2]:.2f}%"
+                )
+
+            with c4:
+                st.metric(
+                    "Deriva",
+                    f"{percentuais[3]:.2f}%"
+                )
         
 # HISTÓRICO
 if st.session_state.historico:
