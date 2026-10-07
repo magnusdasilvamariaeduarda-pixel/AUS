@@ -120,7 +120,7 @@ st.link_button(
 )
 st.markdown("""
 <h2 style='color:#730000'>
-Sistema Automático de Cálculo de Incerteza
+Automatic Uncertainty System
 </h2>
 """, unsafe_allow_html=True)
 st.divider()
@@ -722,7 +722,7 @@ if st.session_state.historico:
 st.markdown("""
 <hr>
 <div style="text-align:center;color:#666666;font-size:14px;">
-MMG • Sistema de Cálculo de Incerteza de Medição<br>
+MMG • Automatic Uncertainty System<br>
 Engenharia Mecânica<br>
 Versão 1.0
 </div>
