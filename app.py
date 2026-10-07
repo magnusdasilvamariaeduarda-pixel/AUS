@@ -299,42 +299,61 @@ if st.button(
 
             if confianca == "90%":
                 k = 1.645
+
             elif confianca == "95%":
                 k = 2.0
+
             else:
                 k = 2.576
 
             U = k * uc
 
+            # ==========================
+            # HISTÓRICO
+            # ==========================
+
             st.session_state.historico.append({
-                "Data": datetime.datetime.now().strftime("%d/%m/%Y %H:%M"),
+                "Data": datetime.datetime.now().strftime(
+                    "%d/%m/%Y %H:%M"
+                ),
                 "Instrumento": instrumento,
-                "Resultado": f"{media:.6f} ± {U:.6f} {unidade}"
+                "Resultado": (
+                    f"{media:.6f} ± "
+                    f"{U:.6f} {unidade}"
+                )
             })
+
+            # ==========================
+            # RESULTADOS
+            # ==========================
 
             st.subheader("Resultados")
 
             r1, r2, r3, r4 = st.columns(4)
 
             with r1:
+
                 st.metric(
                     "Valor Médio",
                     f"{media:.6f}"
                 )
 
             with r2:
+
                 st.metric(
                     "Desvio Padrão",
                     f"{desvio:.6f}"
                 )
 
             with r3:
+
                 st.metric(
                     "Tipo A",
                     f"{u_a:.6f}"
                 )
 
             with r4:
+
                 st.metric(
                     "Tipo B",
                     f"{u_b:.6f}"
@@ -345,24 +364,24 @@ if st.button(
             c1, c2 = st.columns(2)
 
             with c1:
+
                 st.metric(
                     "Incerteza Combinada (Uc)",
                     f"{uc:.6f}"
                 )
 
             with c2:
+
                 st.metric(
                     "Incerteza Expandida (U)",
                     f"{U:.6f} {unidade}"
                 )
 
-  # ==========================
-            # GRÁFICO — ONDA SENOIDAL
+            # ==========================
+            # DADOS DO GRÁFICO
             # ==========================
 
             st.divider()
-
-            import plotly.graph_objects as go
 
             total = (
                 u_a**2 +
@@ -387,7 +406,6 @@ if st.button(
                     (u_deriva**2 / total) * 100
                 ]
 
-                # Cores
                 cores = [
                     "#730000",
                     "#C62828",
@@ -395,10 +413,14 @@ if st.button(
                     "#1565C0"
                 ]
 
-                # Espaçamento entre cada fonte
+                # ==========================
+                # ONDA SENOIDAL
+                # ==========================
+
+                import plotly.graph_objects as go
+
                 espacamento = 2 * np.pi
 
-                # Pontos por trecho
                 pontos_por_trecho = 250
 
                 fig = go.Figure()
@@ -406,7 +428,11 @@ if st.button(
                 for i, fonte in enumerate(fontes):
 
                     inicio = i * espacamento
-                    fim = (i + 1) * espacamento
+
+                    fim = (
+                        (i + 1) *
+                        espacamento
+                    )
 
                     x_trecho = np.linspace(
                         inicio,
@@ -414,22 +440,22 @@ if st.button(
                         pontos_por_trecho
                     )
 
-                    # Amplitude proporcional à contribuição
                     if max(percentuais) > 0:
 
                         amplitude = (
-                            percentuais[i]
-                            / max(percentuais)
+                            percentuais[i] /
+                            max(percentuais)
                         ) * 2
 
                     else:
 
                         amplitude = 0
 
-                    # Onda senoidal
                     y_trecho = (
                         amplitude *
-                        np.sin(x_trecho - inicio)
+                        np.sin(
+                            x_trecho - inicio
+                        )
                     )
 
                     fig.add_trace(
@@ -449,7 +475,6 @@ if st.button(
                         )
                     )
 
-                    # Linha separadora
                     if i < len(fontes) - 1:
 
                         fig.add_vline(
@@ -478,7 +503,10 @@ if st.button(
                     ),
 
                     xaxis=dict(
-                        title="Fontes de Incerteza",
+
+                        title=(
+                            "Fontes de Incerteza"
+                        ),
 
                         tickmode="array",
 
@@ -492,10 +520,12 @@ if st.button(
                         ticktext=fontes,
 
                         showgrid=False,
+
                         zeroline=False
                     ),
 
                     yaxis=dict(
+
                         title="Amplitude relativa",
 
                         showgrid=True,
@@ -521,6 +551,7 @@ if st.button(
                     ),
 
                     legend=dict(
+
                         orientation="h",
 
                         yanchor="bottom",
@@ -538,6 +569,82 @@ if st.button(
                     use_container_width=True
                 )
 
+                # ==========================
+                # LEITURA DO GRÁFICO
+                # ==========================
+
+                st.subheader(
+                    "📖 Leitura do Gráfico"
+                )
+
+                st.write(
+                    "O gráfico mostra a contribuição percentual "
+                    "de cada componente para a incerteza "
+                    "combinada. Quanto maior o percentual, "
+                    "maior é sua influência no resultado final."
+                )
+
+                indice_maior = np.argmax(
+                    percentuais
+                )
+
+                maior_fonte = fontes[
+                    indice_maior
+                ]
+
+                maior_percentual = percentuais[
+                    indice_maior
+                ]
+
+                st.write(
+                    f"**Maior contribuição:** "
+                    f"{maior_fonte} "
+                    f"({maior_percentual:.2f}%)"
+                )
+
+                st.write(
+                    "A componente com maior percentual é a que "
+                    "mais influencia a incerteza combinada."
+                )
+
+                # ==========================
+                # CONTRIBUIÇÃO INDIVIDUAL
+                # ==========================
+
+                st.write(
+                    "### 📊 Contribuição de cada componente"
+                )
+
+                c1, c2, c3, c4 = st.columns(4)
+
+                with c1:
+
+                    st.metric(
+                        "Tipo A",
+                        f"{percentuais[0]:.2f}%"
+                    )
+
+                with c2:
+
+                    st.metric(
+                        "Certificado",
+                        f"{percentuais[1]:.2f}%"
+                    )
+
+                with c3:
+
+                    st.metric(
+                        "Resolução",
+                        f"{percentuais[2]:.2f}%"
+                    )
+
+                with c4:
+
+                    st.metric(
+                        "Deriva",
+                        f"{percentuais[3]:.2f}%"
+                    )
+
             else:
 
                 st.warning(
@@ -545,76 +652,25 @@ if st.button(
                     "porque as fontes de incerteza "
                     "possuem contribuição zero."
                 )
-             # ==========================
-            # LEITURA DO GRÁFICO
-            # ==========================
 
-            st.subheader("📖 Leitura do Gráfico")
+    except ValueError:
 
-            st.write(
-                "O gráfico mostra a contribuição percentual de cada "
-                "componente para a incerteza combinada. Quanto maior "
-                "a contribuição, maior é sua influência no resultado "
-                "final da incerteza."
-            )
+        st.error(
+            "Verifique os valores informados."
+        )
 
-            # Identifica a maior contribuição
-            indice_maior = np.argmax(percentuais)
 
-            maior_fonte = fontes[indice_maior]
-
-            maior_percentual = percentuais[indice_maior]
-
-            st.write(
-                f"**Maior contribuição:** {maior_fonte} "
-                f"({maior_percentual:.2f}%)"
-            )
-
-            st.write(
-                "A componente com maior percentual é a que mais "
-                "influencia a incerteza combinada e, portanto, "
-                "merece maior atenção caso seja necessário reduzir "
-                "a incerteza do resultado."
-            )
-
-            # ==========================
-            # CONTRIBUIÇÃO INDIVIDUAL
-            # ==========================
-
-            st.write("### 📊 Contribuição de cada componente")
-
-            c1, c2, c3, c4 = st.columns(4)
-
-            with c1:
-                st.metric(
-                    "Tipo A",
-                    f"{percentuais[0]:.2f}%"
-                )
-
-            with c2:
-                st.metric(
-                    "Certificado",
-                    f"{percentuais[1]:.2f}%"
-                )
-
-            with c3:
-                st.metric(
-                    "Resolução",
-                    f"{percentuais[2]:.2f}%"
-                )
-
-            with c4:
-                st.metric(
-                    "Deriva",
-                    f"{percentuais[3]:.2f}%"
-                )
-        
+# ==========================
 # HISTÓRICO
+# ==========================
+
 if st.session_state.historico:
 
     st.divider()
 
-    st.subheader("Histórico de Medições")
+    st.subheader(
+        "Histórico de Medições"
+    )
 
     historico_df = pd.DataFrame(
         st.session_state.historico
