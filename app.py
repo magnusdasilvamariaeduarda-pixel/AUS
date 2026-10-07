@@ -642,74 +642,65 @@ if st.button(
 
                 c1, c2, c3, c4 = st.columns(4)
 
-                with c1:
+    with c1:
 
-                    st.markdown(
-                        '<div class="card-tipo-a">',
-                        unsafe_allow_html=True
-                    )
+        st.markdown(f"""
+        <div style="
+            background:#730000;
+            padding:20px;
+            border-radius:15px;
+            color:white;
+            text-align:center;
+        ">
+            <h4>Tipo A</h4>
+            <h2>{percentuais[0]:.2f}%</h2>
+        </div>
+        """, unsafe_allow_html=True)
 
-                    st.metric(
-                        "Tipo A",
-                        f"{percentuais[0]:.2f}%"
-                    )
+    with c2:
 
-                    st.markdown(
-                        "</div>",
-                        unsafe_allow_html=True
-                    )
+        st.markdown(f"""
+        <div style="
+            background:#C62828;
+            padding:20px;
+            border-radius:15px;
+            color:white;
+            text-align:center;
+        ">
+            <h4>Certificado</h4>
+            <h2>{percentuais[1]:.2f}%</h2>
+        </div>
+        """, unsafe_allow_html=True)
 
-                with c2:
+    with c3:
 
-                    st.markdown(
-                        '<div class="card-certificado">',
-                        unsafe_allow_html=True
-                    )
+        st.markdown(f"""
+        <div style="
+            background:#F57C00;
+            padding:20px;
+            border-radius:15px;
+            color:white;
+            text-align:center;
+        ">
+            <h4>Resolução</h4>
+            <h2>{percentuais[2]:.2f}%</h2>
+        </div>
+        """, unsafe_allow_html=True)
 
-                    st.metric(
-                        "Certificado",
-                        f"{percentuais[1]:.2f}%"
-                    )
+    with c4:
 
-                    st.markdown(
-                        "</div>",
-                        unsafe_allow_html=True
-                    )
-
-                with c3:
-
-                    st.markdown(
-                        '<div class="card-resolucao">',
-                        unsafe_allow_html=True
-                    )
-
-                    st.metric(
-                        "Resolução",
-                        f"{percentuais[2]:.2f}%"
-                    )
-
-                    st.markdown(
-                        "</div>",
-                        unsafe_allow_html=True
-                    )
-
-                with c4:
-
-                    st.markdown(
-                        '<div class="card-deriva">',
-                        unsafe_allow_html=True
-                    )
-
-                    st.metric(
-                        "Deriva",
-                        f"{percentuais[3]:.2f}%"
-                    )
-
-                    st.markdown(
-                        "</div>",
-                        unsafe_allow_html=True
-                    )
-
+        st.markdown(f"""
+        <div style="
+            background:#1565C0;
+            padding:20px;
+            border-radius:15px;
+            color:white;
+            text-align:center;
+        ">
+            <h4>Deriva</h4>
+            <h2>{percentuais[3]:.2f}%</h2>
+        </div>
+        """, unsafe_allow_html=True)
 
             else:
 
