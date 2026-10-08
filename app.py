@@ -6,7 +6,7 @@ import datetime
 
 st.set_page_config(
     page_title="MMG",
-    page_icon="logo.png",
+    page_icon="mmg (1).png",
     layout="wide"
 )
 if "historico" not in st.session_state:
