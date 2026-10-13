@@ -17,7 +17,7 @@ from reportlab.platypus import (
 )
 
 st.set_page_config(
-    page_title="IncertezaLab | MMG",
+    page_title="Automatic Uncertainty System | MMG",
     page_icon="📐",
     layout="wide"
 )
@@ -919,5 +919,5 @@ elif pagina == "Relatórios":
 st.markdown("---")
 
 st.caption(
-    "IncertezaLab • MMG • Engenharia Mecânica • Versão 2.0"
+    "Automatic Uncertainty System • MMG • Engenharia Mecânica • Versão 2.0"
 )
