@@ -107,7 +107,7 @@ h1, h2, h3 {
 
 # BANCO DE DADOS
 
-DB = "incertezalab.db"
+DB = "Automatic Uncertainty System.db"
 
 
 def db():
@@ -154,7 +154,7 @@ if not st.session_state.user:
         '<div class="eyebrow">'
         'MMG • ENGENHARIA E METROLOGIA'
         '</div>'
-        '<h1>IncertezaLab</h1>'
+        '<h1>Automatic Uncertainty System</h1>'
         '<p>Análise de incerteza de medição, '
         'com histórico e relatórios.</p>'
         '</div>',
@@ -189,7 +189,7 @@ usuario = st.session_state.user
 
 with st.sidebar:
 
-    st.markdown("## 📐 IncertezaLab")
+    st.markdown("## ⚙ Automatic Uncertainty System")
     st.caption("Automatic Uncertainty System")
 
     pagina = st.radio(
