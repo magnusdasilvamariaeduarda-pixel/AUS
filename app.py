@@ -161,12 +161,11 @@ def users():
 
 def login_ok(usuario, senha):
     senha_salva = users().get(usuario)
-
     return (
         senha_salva is not None
         and hmac.compare_digest(
             str(senha_salva),
-            hash_pw(senha)
+            str(senha)
         )
     )
 
