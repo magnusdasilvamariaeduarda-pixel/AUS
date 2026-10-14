@@ -16,7 +16,7 @@ from reportlab.platypus import (
 
 st.set_page_config(
     page_title="Automatic Uncertainty System | MMG",
-    page_icon="📐",
+    page_icon="⚙",
     layout="wide"
 )
 
