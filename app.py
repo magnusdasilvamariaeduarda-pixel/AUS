@@ -4,8 +4,6 @@ import pandas as pd
 import plotly.express as px
 import sqlite3
 import datetime as dt
-import hashlib
-import hmac
 import io
 
 from reportlab.lib import colors
@@ -144,170 +142,13 @@ with db() as conexao:
     """)
 
 
-# LOGIN
 
-def hash_pw(senha):
-    return hashlib.sha256(
-        senha.encode()
-    ).hexdigest()
+# IDENTIFICAÇÃO DO USUÁRIO PELO NOME
 
+if "user" not in st.session_state:
+    st.session_state.user = ""
 
-def users():
-    try:
-        return dict(st.secrets["auth"]["users"])
-    except Exception:
-        return {}
-
-
-def login_ok(usuario, senha):
-    senha_salva = users().get(usuario)
-    return (
-        senha_salva is not None
-        and hmac.compare_digest(
-            str(senha_salva),
-            str(senha)
-        )
-    )
-
-
-# RELATÓRIO PDF
-
-def pdf_bytes(r, usuario):
-    arquivo = io.BytesIO()
-
-    doc = SimpleDocTemplate(
-        arquivo,
-        pagesize=A4,
-        rightMargin=42,
-        leftMargin=42,
-        topMargin=42,
-        bottomMargin=42
-    )
-
-    estilos = getSampleStyleSheet()
-
-    estilos.add(
-        ParagraphStyle(
-            name="TituloIncerteza",
-            parent=estilos["Title"],
-            textColor=colors.HexColor("#17365D"),
-            alignment=TA_CENTER,
-            fontSize=21
-        )
-    )
-
-    dados = [
-        ["Campo", "Valor"],
-        ["Data", r["date"]],
-        ["Usuário", usuario],
-        [
-            "Grandeza",
-            f'{r["grandeza"]} ({r["unidade"]})'
-        ],
-        ["Instrumento", r["instrumento"]],
-        ["Confiança", r["confianca"]],
-        [
-            "Número de medições",
-            str(r["n"])
-        ],
-        ["Valores medidos", r["valores"]],
-        [
-            "Média",
-            f'{r["media"]:.6f} {r["unidade"]}'
-        ],
-        [
-            "Incerteza Tipo A",
-            f'{r["ua"]:.6f} {r["unidade"]}'
-        ],
-        [
-            "Incerteza Tipo B",
-            f'{r["ub"]:.6f} {r["unidade"]}'
-        ],
-        [
-            "Incerteza combinada",
-            f'{r["uc"]:.6f} {r["unidade"]}'
-        ],
-        ["Fator k", f'{r["k"]:.3f}'],
-        [
-            "Incerteza expandida",
-            f'{r["U"]:.6f} {r["unidade"]}'
-        ],
-        ["Resultado", r["resultado"]]
-    ]
-
-    tabela = Table(
-        dados,
-        colWidths=[155, 330],
-        repeatRows=1
-    )
-
-    tabela.setStyle(
-        TableStyle([
-            (
-                "BACKGROUND",
-                (0, 0), (-1, 0),
-                colors.HexColor("#17365D")
-            ),
-            (
-                "TEXTCOLOR",
-                (0, 0), (-1, 0),
-                colors.white
-            ),
-            (
-                "GRID",
-                (0, 0), (-1, -1),
-                .5,
-                colors.HexColor("#DCE4EC")
-            ),
-            (
-                "BACKGROUND",
-                (0, 1), (0, -1),
-                colors.HexColor("#F1F5F9")
-            ),
-            (
-                "LEFTPADDING",
-                (0, 0), (-1, -1), 8
-            ),
-            (
-                "TOPPADDING",
-                (0, 0), (-1, -1), 7
-            ),
-            (
-                "BOTTOMPADDING",
-                (0, 0), (-1, -1), 7
-            )
-        ])
-    )
-
-    elementos = [
-        Paragraph(
-            "IncertezaLab",
-            estilos["TituloIncerteza"]
-        ),
-        Spacer(1, 18),
-        tabela,
-        Spacer(1, 20),
-        Paragraph(
-            "Relatório gerado pelo IncertezaLab. "
-            "Confira os dados de entrada e os critérios "
-            "técnicos aplicáveis antes de usar o resultado.",
-            estilos["Italic"]
-        )
-    ]
-
-    doc.build(elementos)
-
-    return arquivo.getvalue()
-
-
-# ESTADO DE LOGIN
-
-if "logged" not in st.session_state:
-    st.session_state.logged = False
-
-
-if not st.session_state.logged:
-
+if not st.session_state.user:
     st.markdown(
         '<div class="hero">'
         '<div class="eyebrow">'
@@ -321,42 +162,25 @@ if not st.session_state.logged:
     )
 
     with st.container(border=True):
+        st.subheader("Identificação do usuário")
 
-        st.subheader("Acessar sua conta")
-
-        with st.form("login"):
-
-            usuario = st.text_input("Usuário")
-
-            senha = st.text_input(
-                "Senha",
-                type="password"
-            )
+        with st.form("cadastro_nome"):
+            nome = st.text_input("Digite seu nome")
 
             entrar = st.form_submit_button(
-                "Entrar",
+                "Cadastrar nome e entrar",
                 type="primary",
                 use_container_width=True
             )
 
         if entrar:
-
-            if login_ok(usuario.strip(), senha):
-
-                st.session_state.logged = True
-                st.session_state.user = usuario.strip()
-
+            if nome.strip():
+                st.session_state.user = nome.strip()
                 st.rerun()
-
             else:
-                st.error(
-                    "Usuário ou senha incorretos. "
-                    "Configure as credenciais em "
-                    "Streamlit Secrets."
-                )
+                st.warning("Digite seu nome para continuar.")
 
     st.stop()
-
 
 usuario = st.session_state.user
 
@@ -382,15 +206,13 @@ with st.sidebar:
     st.divider()
     st.caption(f"Conta: {usuario}")
 
-    if st.button(
-        "Sair da conta",
-        use_container_width=True
-    ):
-
-        st.session_state.logged = False
-        st.session_state.pop("user", None)
-
-        st.rerun()
+   
+if st.button(
+    "Trocar nome",
+    use_container_width=True
+):
+    st.session_state.user = ""
+    st.rerun()
 
 
 # HISTÓRICO DO USUÁRIO
