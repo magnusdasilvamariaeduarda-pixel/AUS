@@ -234,6 +234,86 @@ def get_history():
         [dict(registro) for registro in registros]
     )
 
+def pdf_bytes(registro, usuario):
+    arquivo = io.BytesIO()
+
+    documento = SimpleDocTemplate(
+        arquivo,
+        pagesize=A4,
+        title="Relatório IncertezaLab",
+        rightMargin=42,
+        leftMargin=42,
+        topMargin=42,
+        bottomMargin=42
+    )
+
+    estilos = getSampleStyleSheet()
+    elementos = []
+
+    elementos.append(
+        Paragraph(
+            "Relatório IncertezaLab",
+            estilos["Title"]
+        )
+    )
+
+    elementos.append(Spacer(1, 18))
+
+    campos = [
+        ["Informação", "Resultado"],
+        ["Usuário", str(usuario)],
+        ["Data", str(registro.get("date", ""))],
+        ["Grandeza", str(registro.get("grandeza", ""))],
+        ["Unidade", str(registro.get("unidade", ""))],
+        ["Instrumento", str(registro.get("instrumento", ""))],
+        ["Nível de confiança", str(registro.get("confianca", ""))],
+        ["Número de medições", str(registro.get("n", ""))],
+        ["Valores medidos", str(registro.get("valores", ""))],
+        ["Média", str(registro.get("media", ""))],
+        ["Incerteza Tipo A", str(registro.get("ua", ""))],
+        ["Incerteza Tipo B", str(registro.get("ub", ""))],
+        ["Incerteza combinada", str(registro.get("uc", ""))],
+        ["Fator k", str(registro.get("k", ""))],
+        ["Incerteza expandida", str(registro.get("U", ""))],
+        ["Resultado final", str(registro.get("resultado", ""))]
+    ]
+
+    tabela = Table(
+        campos,
+        colWidths=[170, 330],
+        repeatRows=1
+    )
+
+    tabela.setStyle(
+        TableStyle([
+            (
+                "BACKGROUND",
+                (0, 0),
+                (-1, 0),
+                colors.HexColor("#17365D")
+            ),
+            ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+            ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
+            ("VALIGN", (0, 0), (-1, -1), "TOP"),
+            (
+                "BACKGROUND",
+                (0, 1),
+                (0, -1),
+                colors.HexColor("#EAF0F6")
+            ),
+            ("LEFTPADDING", (0, 0), (-1, -1), 8),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 8),
+            ("TOPPADDING", (0, 0), (-1, -1), 7),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 7)
+        ])
+    )
+
+    elementos.append(tabela)
+
+    documento.build(elementos)
+
+    return arquivo.getvalue()
+
 
 hist = get_history()
 
