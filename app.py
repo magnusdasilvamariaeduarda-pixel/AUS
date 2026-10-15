@@ -5,6 +5,7 @@ import plotly.express as px
 import sqlite3
 import datetime as dt
 import io
+import re
 
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
