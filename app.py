@@ -499,7 +499,7 @@ elif pagina == "Nova medição":
                 valor = st.number_input(
                     f"Medição {i + 1}",
                     value=None,
-                    format="%.6f",
+                    format="%.3f",
                     key=f"valor_medicao_{i}"
                 )
 
@@ -605,7 +605,7 @@ elif pagina == "Nova medição":
             )
 
             resultado = (
-                f"{media:.6f} ± {U:.6f} "
+                f"{media:.3f} ± {U:.3f} "
                 f"{unidade.strip()}"
             )
 
