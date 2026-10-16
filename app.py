@@ -437,7 +437,18 @@ if pagina == "Painel":
 
 elif pagina == "Nova medição":
 
+    quantidade_medicoes = st.number_input(
+        "Quantidade de medições",
+        min_value=2,
+        max_value=20,
+        value=3,
+        step=1,
+        key="quantidade_medicoes"
+    )
+
     with st.form("medicao"):
+
+        
 
         a, b, c = st.columns(3)
 
@@ -476,10 +487,23 @@ elif pagina == "Nova medição":
             ]
         )
 
-        valores_txt = st.text_input(
-            "Medições separadas por vírgula",
-            placeholder="10.01, 10.03, 10.02"
-        )
+
+        st.markdown("### Valores das medições")
+
+        valores_medicoes = []
+
+        colunas_medicoes = st.columns(3)
+
+        for i in range(int(quantidade_medicoes)):
+            with colunas_medicoes[i % 3]:
+                valor = st.number_input(
+                    f"Medição {i + 1}",
+                    value=None,
+                    format="%.6f",
+                    key=f"valor_medicao_{i}"
+                )
+
+                valores_medicoes.append(valor)
 
         presets = {
             "Paquímetro": (.02, .05, .01),
@@ -521,6 +545,7 @@ elif pagina == "Nova medição":
                 format="%.6f"
             )
 
+
         calcular = st.form_submit_button(
             "Calcular e salvar",
             type="primary",
@@ -529,31 +554,25 @@ elif pagina == "Nova medição":
 
     if calcular:
 
-        try:
+        valores = [
+            float(v)
+            for v in valores_medicoes
+            if v is not None
+        ]
 
-            valores = [
-                float(v.strip())
-                for v in valores_txt.split(",")
-                if v.strip()
-            ]
-
-        except ValueError:
-
-            valores = []
-
-        if len(valores) < 2:
-
+        if (
+            len(valores) < 2
+            or len(valores) != int(quantidade_medicoes)
+        ):
             st.error(
-                "Informe pelo menos duas medições "
-                "numéricas separadas por vírgula."
+                "Preencha todas as medições numéricas."
             )
 
         elif not unidade.strip():
-
             st.error("Informe a unidade de medida.")
 
         else:
-
+        
             media = float(np.mean(valores))
 
             ua = float(
