@@ -241,7 +241,7 @@ def pdf_bytes(registro, usuario):
     documento = SimpleDocTemplate(
         arquivo,
         pagesize=A4,
-        title="Relatório IncertezaLab",
+        title="Relatório MMG",
         rightMargin=42,
         leftMargin=42,
         topMargin=42,
@@ -253,7 +253,7 @@ def pdf_bytes(registro, usuario):
 
     elementos.append(
         Paragraph(
-            "Relatório IncertezaLab",
+            "Relatório MMG",
             estilos["Title"]
         )
     )
@@ -684,7 +684,7 @@ elif pagina == "Nova medição":
         st.download_button(
             "Baixar relatório PDF",
             pdf_bytes(registro, usuario),
-            file_name="relatorio_incertezalab.pdf",
+            file_name="relatorio_MMG.pdf",
             mime="application/pdf",
             use_container_width=True
         )
@@ -763,7 +763,7 @@ elif pagina == "Histórico":
             filtrado.to_csv(
                 index=False
             ).encode("utf-8-sig"),
-            "historico_incertezalab.csv",
+            "historico_MMG.csv",
             "text/csv"
         )
 
