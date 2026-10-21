@@ -2,300 +2,355 @@ import streamlit as st
 import numpy as np
 import pandas as pd
 import plotly.express as px
-import sqlite3, datetime as dt, hashlib, hmac, io
-from reportlab.lib import colors
-from reportlab.lib.pagesizes import A4
-from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-from reportlab.lib.enums import TA_CENTER
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+import datetime
+from pathlib import Path
 
-st.set_page_config(page_title="IncertezaLab | MMG", page_icon="📐", layout="wide")
+st.set_page_config(
+    page_title="MMG",
+    page_icon="⚙️",
+    layout="wide"
+)
+if "historico" not in st.session_state:
+    st.session_state.historico = []
+
+# ==========================
+# ESTILO VISUAL MMG
+# ==========================
 
 st.markdown("""
 <style>
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@500;600;700;800&display=swap');
-.stApp{background:#F5F7FA;color:#1C2B3A;font-family:'DM Sans',sans-serif}
-.block-container{padding-top:1.6rem;max-width:1450px}
-h1,h2,h3{font-family:'Manrope',sans-serif!important;color:#17365D}
-[data-testid="stSidebar"]{background:#132A43}
-[data-testid="stSidebar"] *{color:#F4F7FA}
-[data-testid="stMetric"]{background:white;border:1px solid #E4EAF0;border-radius:15px;padding:18px;box-shadow:0 4px 18px #17365D0A}
-.stButton button,.stDownloadButton button{border-radius:10px;min-height:2.7rem;font-weight:700}
-.stButton button[kind="primary"]{background:#176B70;color:white;border-color:#176B70}
-.stTextInput input,.stNumberInput input{border-radius:9px}
-.hero{background:linear-gradient(120deg,#17365D,#20506D 65%,#176B70);padding:26px 30px;border-radius:19px;color:white;margin-bottom:22px}
-.hero h1{color:white!important;margin:0}.hero p{color:#DDEAF3;margin:.5rem 0 0}
-.eyebrow{color:#A8E2DD;font-size:.75rem;text-transform:uppercase;letter-spacing:.12em;font-weight:800}
+
+/* Fundo */
+.stApp{
+    background-color:white;
+}
+
+/* Sidebar */
+section[data-testid="stSidebar"]{
+    background-color:#111111;
+}
+
+/* Texto da Sidebar */
+section[data-testid="stSidebar"] *{
+    color:white;
+}
+
+/* Cards */
+[data-testid="stMetric"]{
+    background:white;
+    padding:15px;
+    border-radius:15px;
+    border-left:6px solid #730000;
+    box-shadow:0px 4px 10px rgba(0,0,0,0.10);
+}
+
+/* Botões */
+.stButton button{
+    background-color:#730000;
+    color:white;
+    border:none;
+    border-radius:12px;
+    height:55px;
+    font-weight:bold;
+}
+
+.stButton button:hover{
+    background-color:#500000;
+}
+
+/* Inputs */
+.stTextInput input,
+.stTextArea textarea,
+.stNumberInput input{
+    border-radius:10px;
+}
+
+/* Destaque vermelho discreto da MMG */
+[data-testid="stNumberInput"] button,
+[data-testid="stSelectbox"] div[data-baseweb="select"]{
+    border-color:#730000;
+}
+
+.mmg-entrada {
+    background: #730000;
+    color: white;
+    padding: 42px 34px;
+    border-radius: 12px;
+    margin: 10px 0 22px 0;
+}
+.mmg-entrada h1 { color: white; margin-bottom: 8px; }
+.mmg-entrada p { color: #f5dddd; font-size: 17px; }
+.mmg-legenda { color: #730000; font-weight: 600; letter-spacing: 1px; }
+
 </style>
 """, unsafe_allow_html=True)
 
-DB = "incertezalab.db"
-def db():
-    c=sqlite3.connect(DB,check_same_thread=False)
-    c.row_factory=sqlite3.Row
-    return c
-with db() as c:
-    c.execute("""CREATE TABLE IF NOT EXISTS med (id INTEGER PRIMARY KEY, user TEXT, date TEXT,
-    grandeza TEXT, unidade TEXT, instrumento TEXT, confianca TEXT, n INTEGER, media REAL,
-    ua REAL, ub REAL, uc REAL, k REAL, U REAL, resultado TEXT, valores TEXT)""")
+# ==========================
+# TELA DE ENTRADA MMG
+# ==========================
 
-def hash_pw(p): return hashlib.sha256(p.encode()).hexdigest()
-def users():
-    try: return dict(st.secrets["auth"]["users"])
-    except Exception: return {}
-def login_ok(u,p):
-    saved=users().get(u)
-    return saved is not None and hmac.compare_digest(str(saved),hash_pw(p))
+if "mmg_iniciada" not in st.session_state:
+    st.session_state.mmg_iniciada = False
 
-def pdf_bytes(r, user):
-    b=io.BytesIO()
-    doc=SimpleDocTemplate(b,pagesize=A4,rightMargin=42,leftMargin=42,topMargin=42,bottomMargin=42)
-    s=getSampleStyleSheet()
-    s.add(ParagraphStyle(name="T",parent=s["Title"],textColor=colors.HexColor("#17365D"),alignment=TA_CENTER,fontSize=21))
-    data=[["Campo","Valor"],["Data",r["date"]],["Usuário",user],["Grandeza",f'{r["grandeza"]} ({r["unidade"]})'],
-          ["Instrumento",r["instrumento"]],["Confiança",r["confianca"]],["Número de medições",str(r["n"])],
-          ["Valores medidos",r["valores"]],["Média",f'{r["media"]:.6f} {r["unidade"]}'],
-          ["Incerteza Tipo A",f'{r["ua"]:.6f} {r["unidade"]}'],["Incerteza Tipo B",f'{r["ub"]:.6f} {r["unidade"]}'],
-          ["Incerteza combinada",f'{r["uc"]:.6f} {r["unidade"]}'],["Fator k",f'{r["k"]:.3f}'],
-          ["Incerteza expandida",f'{r["U"]:.6f} {r["unidade"]}'],["Resultado",r["resultado"]]]
-    t=Table(data,colWidths=[155,330],repeatRows=1)
-    t.setStyle(TableStyle([("BACKGROUND",(0,0),(-1,0),colors.HexColor("#17365D")),("TEXTCOLOR",(0,0),(-1,0),colors.white),
-        ("GRID",(0,0),(-1,-1),.5,colors.HexColor("#DCE4EC")),("BACKGROUND",(0,1),(0,-1),colors.HexColor("#F1F5F9")),
-        ("LEFTPADDING",(0,0),(-1,-1),8),("TOPPADDING",(0,0),(-1,-1),7),("BOTTOMPADDING",(0,0),(-1,-1),7)]))
-    doc.build([Paragraph("IncertezaLab",s["T"]),Spacer(1,18),t,Spacer(1,20),
-        Paragraph("Relatório gerado pelo IncertezaLab. Confira os dados de entrada e os critérios técnicos aplicáveis antes de usar o resultado.",s["Italic"])])
-    return b.getvalue()
+if not st.session_state.mmg_iniciada:
+    logo = Path("mmg (1).png")
+    if logo.exists():
+        st.image(str(logo), width=230)
+    else:
+        st.markdown("<div class='mmg-legenda'>MMG • ENGENHARIA E METROLOGIA</div>", unsafe_allow_html=True)
 
-if "logged" not in st.session_state: st.session_state.logged=False
-if not st.session_state.logged:
-    st.markdown('<div class="hero"><div class="eyebrow">MMG • ENGENHARIA E METROLOGIA</div><h1>IncertezaLab</h1><p>Análise de incerteza de medição, com histórico e relatórios.</p></div>',unsafe_allow_html=True)
-    with st.container(border=True):
-        st.subheader("Acessar sua conta")
-        with st.form("login"):
-            u=st.text_input("Usuário")
-            p=st.text_input("Senha",type="password")
-            go=st.form_submit_button("Entrar",type="primary",use_container_width=True)
-        if go:
-            if login_ok(u.strip(),p):
-                st.session_state.logged=True; st.session_state.user=u.strip(); st.rerun()
-            else: st.error("Usuário ou senha incorretos. Configure as credenciais em Streamlit Secrets.")
+    st.markdown("""
+    <div class="mmg-entrada">
+        <div style="font-size:13px;letter-spacing:2px;">AUTOMATIC UNCERTAINTY SYSTEM · VERSÃO 1.0</div>
+        <h1>MMG</h1>
+        <h3 style="color:white;">Sistema de Cálculo de Incerteza de Medição</h3>
+        <p>Organize suas medições, estime as incertezas e visualize a contribuição de cada componente em um só lugar.</p>
+    </div>
+    """, unsafe_allow_html=True)
+
+    st.write("Uma ferramenta de apoio à rotina de metrologia e à análise de resultados de medição.")
+    if st.button("▶  INICIAR MEDIÇÃO", use_container_width=True, type="primary"):
+        st.session_state.mmg_iniciada = True
+        st.rerun()
+    st.caption("MMG · Engenharia Mecânica · Versão 1.0")
     st.stop()
 
-user=st.session_state.user
-with st.sidebar:
-    st.markdown("## 📐 IncertezaLab")
-    st.caption("Automatic Uncertainty System")
-    page=st.radio("NAVEGAÇÃO",["Painel","Nova medição","Histórico","Relatórios"],label_visibility="collapsed")
-    st.divider(); st.caption(f"Conta: {user}")
-    if st.button("Sair da conta",use_container_width=True):
-        st.session_state.logged=False; st.session_state.pop("user",None); st.rerun()
+# ==========================
+# SIDEBAR
+# ==========================
 
-def get_history():
-    with db() as c: rows=c.execute("SELECT * FROM med WHERE user=? ORDER BY id DESC",(user,)).fetchall()
-    return pd.DataFrame([dict(x) for x in rows])
-hist=get_history()
-st.markdown(f'<div class="hero"><div class="eyebrow">MMG • AUTOMATIC UNCERTAINTY SYSTEM</div><h1>{page}</h1><p>Gestão de medições e análise de incerteza em um só lugar.</p></div>',unsafe_allow_html=True)
+if Path("mmg (1).png").exists():
+    st.sidebar.image("mmg (1).png", width=220)
+else:
+    st.sidebar.markdown("# MMG")
 
-if page=="Painel":
-    a,b,c=st.columns(3)
-    a.metric("Medições salvas",len(hist))
-    b.metric("Última grandeza",hist.iloc[0]["grandeza"] if len(hist) else "—")
-    c.metric("Último resultado",hist.iloc[0]["resultado"] if len(hist) else "Sem registros")
-    st.subheader("Histórico das últimas medições")
-    if len(hist):
-        chart=hist.head(20).copy().iloc[::-1]
-        chart["media"]=pd.to_numeric(chart["media"])
-        fig=px.line(chart,x="date",y="media",markers=True,color_discrete_sequence=["#176B70"],
-                    labels={"date":"Data","media":"Média medida"},hover_data=["grandeza","instrumento","resultado"])
-        fig.update_layout(paper_bgcolor="white",plot_bgcolor="white",font_color="#17365D",height=360,
-                          margin=dict(l=15,r=15,t=20,b=20),xaxis=dict(showgrid=False),yaxis=dict(gridcolor="#E8EDF2"))
-        st.plotly_chart(fig,use_container_width=True)
-        st.subheader("Registros recentes")
-        st.dataframe(hist.head(5)[["date","grandeza","instrumento","resultado"]].rename(columns={"date":"Data","grandeza":"Grandeza","instrumento":"Instrumento","resultado":"Resultado"}),use_container_width=True,hide_index=True)
-    else: st.info("Ainda não há medições. Acesse Nova medição para começar.")
+st.sidebar.markdown("---")
 
-elif page=="Nova medição":
-    st.subheader("Identificação do instrumento")
-    c1, c2, c3 = st.columns(3)
-    instrumentos = [
-        "Paquímetro", "Micrômetro", "Alicate amperímetro / Multímetro",
-        "Megôhmetro", "Manifold digital WK-6889", "Termômetro", "Balança", "Outro"
-    ]
-    instrumento = c1.selectbox("Instrumento", instrumentos, key="instrumento_sel")
+st.sidebar.header("MMG")
 
-    grandezas_por_instrumento = {
-        "Paquímetro": ["Comprimento"],
-        "Micrômetro": ["Comprimento"],
-        "Alicate amperímetro / Multímetro": ["Tensão elétrica", "Corrente elétrica", "Resistência elétrica", "Frequência", "Temperatura"],
-        "Megôhmetro": ["Resistência de isolamento", "Tensão elétrica"],
-        "Manifold digital WK-6889": ["Pressão", "Temperatura"],
-        "Termômetro": ["Temperatura"],
-        "Balança": ["Massa"],
-        "Outro": ["Temperatura", "Pressão", "Comprimento", "Massa", "Tensão elétrica", "Corrente elétrica", "Resistência elétrica", "Outro"]
-    }
-    grandeza = c2.selectbox("Grandeza medida", grandezas_por_instrumento[instrumento], key="grandeza_sel")
+st.sidebar.write(
+    "Automatic Uncertainty System"
+)
 
-    unidades_por_grandeza = {
-        "Comprimento": ["mm", "cm", "m", "in"],
-        "Temperatura": ["°C", "°F"],
-        "Pressão": ["kPa", "bar", "psi"],
-        "Massa": ["g", "kg"],
-        "Tensão elétrica": ["V", "mV"],
-        "Corrente elétrica": ["A", "mA"],
-        "Resistência elétrica": ["Ω", "kΩ", "MΩ", "GΩ"],
-        "Resistência de isolamento": ["MΩ", "GΩ"],
-        "Frequência": ["Hz", "kHz"],
-        "Outro": ["unidade personalizada"]
-    }
-    unidade_opcoes = unidades_por_grandeza.get(grandeza, ["unidade personalizada"])
-    unidade_padrao = {
-        "Paquímetro": "mm", "Micrômetro": "mm",
-        "Alicate amperímetro / Multímetro": {"Tensão elétrica":"V", "Corrente elétrica":"A", "Resistência elétrica":"Ω", "Frequência":"Hz", "Temperatura":"°C"}.get(grandeza, unidade_opcoes[0]),
-        "Megôhmetro": {"Resistência de isolamento":"MΩ", "Tensão elétrica":"V"}.get(grandeza, unidade_opcoes[0]),
-        "Manifold digital WK-6889": {"Pressão":"kPa", "Temperatura":"°C"}.get(grandeza, unidade_opcoes[0]),
-        "Termômetro":"°C", "Balança":"g", "Outro":unidade_opcoes[0]
-    }
-    u1, u2, u3 = st.columns(3)
-    unidade = u1.selectbox("Unidade de medida", unidade_opcoes,
-                           index=unidade_opcoes.index(unidade_padrao[instrumento]) if unidade_padrao[instrumento] in unidade_opcoes else 0,
-                           key=f"unidade_{instrumento}_{grandeza}")
-    confianca = u2.selectbox("Nível de confiança", ["90%", "95%", "99%"], index=1)
-    n_medicoes = u3.caption("Informe pelo menos duas medições")
+st.sidebar.markdown("---")
 
-    # Somente valores com base nas informações disponíveis são preenchidos automaticamente.
-    # A resolução de 0,02 mm do paquímetro foi confirmada pela usuária.
-    resolucoes_documentadas = {"Paquímetro": (0.02, "mm", "informada para este instrumento")}
-    res_doc = resolucoes_documentadas.get(instrumento)
-    if res_doc and res_doc[1] != unidade:
-        resolucao_padrao = 0.0
+st.sidebar.write("Versão 1.0")
+
+if Path("mmg (1).png").exists():
+    st.image("mmg (1).png", width=500)
+
+st.link_button(
+    "📄 Manual de Uso",
+    "https://github.com/magnusdasilvamariaeduarda-pixel/AUS"
+)
+st.markdown("""
+<h2 style='color:#730000'>
+Sistema Automático de Cálculo de Incerteza
+</h2>
+""", unsafe_allow_html=True)
+st.divider()
+
+# ==========================
+# CADASTRO TÉCNICO E MEDIÇÕES
+# ==========================
+
+# Resoluções e precisões transcritas dos documentos enviados.
+# Precisão do fabricante é informativa e NÃO é tratada como incerteza de calibração.
+CATALOGO = {
+    "Paquímetro": {
+        "grandezas": {"Comprimento": {"mm": {"faixas": {"Faixa não especificada": 0.02}, "precisao": "Não informada"}}},
+        "observacao": "Resolução de 0,02 mm informada pela usuária. Confirmar no instrumento físico.",
+    },
+    "Micrômetro": {
+        "grandezas": {"Comprimento": {"mm": {"faixas": {"Resolução não cadastrada": None}, "precisao": "Não informada"}}},
+        "observacao": "Informe a resolução conforme o instrumento ou manual.",
+    },
+    "Alicate amperímetro / Multímetro": {
+        "grandezas": {
+            "Tensão DC": {"mV": {"600 mV": 0.1}, "V": {"6 V": 0.001, "60 V": 0.01, "600 V": 0.1}},
+            "Tensão AC": {"V": {"6 V": 0.001, "60 V": 0.01, "600 V": 0.1}},
+            "Corrente DC": {"A": {"60 A": 0.01, "600 A": 0.1}},
+            "Corrente AC": {"A": {"6 A (ET-3166B)": 0.001, "60 A": 0.01, "600 A": 0.1}},
+            "Resistência": {"Ω": {"600 Ω": 0.1}, "kΩ": {"6 kΩ": 0.001, "60 kΩ": 0.01, "600 kΩ": 0.1}, "MΩ": {"6 MΩ": 0.001, "60 MΩ": 0.01}},
+            "Capacitância": {"nF": {"10 nF": 0.001, "100 nF": 0.01, "1000 nF": 0.1}, "µF": {"10 µF": 0.001, "100 µF": 0.01, "1000 µF": 0.1}, "mF": {"10 mF": 0.001, "100 mF": 0.01}},
+            "Temperatura": {"°C": {"-20 a 0 °C": 1, "0 a 400 °C": 1, "400 a 1000 °C": 1}, "°F": {"-4 a 32 °F": 1, "32 a 752 °F": 1, "752 a 1832 °F": 1}},
+            "Frequência": {"Hz": {"10 Hz": 0.001, "100 Hz": 0.01, "1000 Hz": 0.1}, "kHz": {"10 kHz": 0.001, "100 kHz": 0.01, "1000 kHz": 0.1}, "MHz": {"10 MHz": 0.001}, "%": {"Ciclo de trabalho 1–99%": 0.1}},
+        },
+        "precisoes": {
+            "Tensão DC": "±(0,5% + 5 dígitos)", "Tensão AC": "±(0,8% + 5 dígitos)",
+            "Corrente DC": "±(4,0% + 5 dígitos)", "Corrente AC": "±(4,0% + 5 dígitos) para 60/600 A; ±(4,5% + 5 dígitos) na faixa 6 A ET-3166B",
+            "Resistência": "±(1,0% + 5 dígitos)", "Capacitância": "±(4,0% + 5 dígitos)",
+            "Temperatura": "Conforme faixa: ±3 °C; ±1,0% ou ±2 °C; ±2% (ver documento)",
+            "Frequência": "±(1,0% + 3 dígitos); ciclo de trabalho ±(3,0% + 3 dígitos)",
+        },
+        "observacao": "Fonte: PDF de especificações enviado. A precisão varia por função/faixa e não substitui certificado de calibração.",
+    },
+    "Megôhmetro": {
+        "grandezas": {
+            "Resistência de isolamento": {"MΩ": {"0 a 200 MΩ": 0.01, "200 a 1000 MΩ": 0.01}, "GΩ": {"1000 MΩ a 20 GΩ": 0.00001}},
+            "Tensão AC": {"V": {"0 a 600 V": None}},
+        },
+        "precisoes": {"Resistência de isolamento": "0–200 MΩ: ±(3% + 2 dígitos); 200–1000 MΩ: ±(5% + 3 dígitos); 1000 MΩ–20 GΩ: ±(10% + 5 dígitos)", "Tensão AC": "±(1,5% da leitura + 5 dígitos)"},
+        "observacao": "Tensão de teste: 500/1000/2500 V. Escala de isolamento: 0–20 GΩ. Divisão mínima: 0,01 MΩ.",
+    },
+    "Manifold digital WK-6889": {
+        "grandezas": {
+            "Pressão": {"kPa": {"0 a 4000 kPa": 1}, "bar": {"0 a 40 bar": 0.01}, "psi": {"0 a 580 psi": None}},
+            "Vácuo": {"kPa": {"-101 a 0 kPa": 1}},
+            "Temperatura": {"°C": {"-50 a 150 °C": 0.1}, "°F": {"Faixa conforme instrumento": 0.1}},
+        },
+        "precisoes": {"Pressão": "±0,5%", "Vácuo": "Não informada separadamente", "Temperatura": "±0,1 °C abaixo de 50 °C"},
+        "observacao": "Fonte: PDF enviado. Pressão: 0–4 MPa; vácuo: −101 a 0 kPa; temperatura: −50 a 150 °C.",
+    },
+    "Termômetro": {"grandezas": {"Temperatura": {"°C": {"Resolução não cadastrada": None}, "°F": {"Resolução não cadastrada": None}}}, "observacao": "Informe a resolução conforme o instrumento/manual."},
+    "Balança": {"grandezas": {"Massa": {"g": {"Resolução não cadastrada": None}, "kg": {"Resolução não cadastrada": None}}}, "observacao": "Informe a resolução conforme o instrumento/manual."},
+    "Outro": {"grandezas": {"Outra grandeza": {"unidade personalizada": {"Faixa não especificada": None}}}, "observacao": "Cadastre os dados com base em documentação técnica."},
+}
+
+instrumento = st.selectbox("Instrumento", list(CATALOGO.keys()), key="instrumento_mmg")
+catalogo_inst = CATALOGO[instrumento]
+grandezas_disp = list(catalogo_inst["grandezas"].keys())
+grandeza = st.selectbox("Grandeza / função de medição", grandezas_disp, key=f"grandeza_{instrumento}")
+unidades_disp = list(catalogo_inst["grandezas"][grandeza].keys())
+unidade = st.selectbox("Unidade de medida", unidades_disp, key=f"unidade_{instrumento}_{grandeza}")
+faixas_disp = list(catalogo_inst["grandezas"][grandeza][unidade].keys())
+faixa = st.selectbox("Faixa de medição", faixas_disp, key=f"faixa_{instrumento}_{grandeza}_{unidade}")
+resolucao_doc = catalogo_inst["grandezas"][grandeza][unidade][faixa]
+
+if resolucao_doc is None:
+    st.warning("A resolução desta função/faixa não está cadastrada nos documentos disponíveis. Informe uma resolução confirmada no instrumento ou manual antes de calcular.")
+else:
+    st.info(f"Resolução documentada para esta seleção: {resolucao_doc:g} {unidade}.")
+
+precisao = catalogo_inst.get("precisoes", {}).get(grandeza, "Não informada")
+st.caption(f"Precisão do fabricante: {precisao}. Esta especificação é informativa e não será usada como incerteza de calibração.")
+st.caption(catalogo_inst.get("observacao", ""))
+
+col_a, col_b = st.columns(2)
+with col_a:
+    confianca = st.selectbox("Nível de confiança", ["90%", "95%", "99%"], index=1)
+with col_b:
+    identificacao = st.text_input("Identificação / patrimônio do instrumento (opcional)")
+
+st.subheader("Medições")
+quantidade = st.selectbox("Quantidade de medições", options=list(range(2, 21)), index=1, help="Escolha de 2 a 20 medições para esta análise.")
+medicoes = []
+cols = st.columns(3)
+for i in range(quantidade):
+    with cols[i % 3]:
+        medicoes.append(st.number_input(f"Medição {i+1} ({unidade})", value=0.0, step=0.01, format="%.9g", key=f"medicao_{i}_{instrumento}_{grandeza}_{faixa}"))
+
+st.subheader("Componentes de incerteza Tipo B")
+st.caption("Os campos de calibração e deriva começam vazios/zerados porque não há valores documentados cadastrados. Não significa que a incerteza real seja zero.")
+c1, c2, c3 = st.columns(3)
+with c1:
+    u_certificado = st.number_input(f"Incerteza padrão de calibração ({unidade})", min_value=0.0, value=0.0, step=0.001, format="%.9g", help="Informe u do certificado. Se o certificado der incerteza expandida U e fator k, calcule u = U/k.")
+with c2:
+    resolucao_in = st.number_input(f"Resolução do instrumento ({unidade})", min_value=0.0, value=float(resolucao_doc or 0.0), step=0.001, format="%.9g", help="Use a resolução confirmada para a função/faixa selecionada.")
+with c3:
+    u_deriva = st.number_input(f"Incerteza padrão associada à deriva ({unidade})", min_value=0.0, value=0.0, step=0.001, format="%.9g", help="Somente use estimativa documentada em histórico ou procedimento técnico.")
+
+with st.expander("ℹ️ Como o MMG trata os dados técnicos"):
+    st.markdown("""
+    - **Tipo A:** calculada a partir da dispersão das medições repetidas.
+    - **Resolução:** convertida em incerteza padrão como resolução / √12, assumindo distribuição retangular. Confirme se essa hipótese é adequada ao método.
+    - **Calibração:** só entra quando houver valor fundamentado no certificado.
+    - **Deriva:** só entra quando houver estimativa documentada. Campo sem informação não significa deriva real zero.
+    - **Precisão do fabricante:** exibida como referência técnica; não é confundida automaticamente com incerteza de calibração.
+    """)
+
+parcial_tab, completo_tab = st.tabs(["Resultado parcial", "Resultado completo estimado"])
+
+def calcular(vals, ucert, resol, deriva, conf):
+    media = float(np.mean(vals))
+    desvio = float(np.std(vals, ddof=1))
+    ua = desvio / np.sqrt(len(vals))
+    ures = resol / np.sqrt(12) if resol > 0 else 0.0
+    ub = float(np.sqrt(ucert**2 + ures**2 + deriva**2))
+    uc = float(np.sqrt(ua**2 + ub**2))
+    k = {"90%": 1.645, "95%": 2.0, "99%": 2.576}[conf]
+    U = k * uc
+    return {"media":media, "desvio":desvio, "ua":ua, "ures":ures, "ub":ub, "uc":uc, "k":k, "U":U}
+
+def mostrar_resultado(modo):
+    faltantes = []
+    if u_certificado <= 0: faltantes.append("incerteza do certificado de calibração não informada")
+    if u_deriva <= 0: faltantes.append("deriva não informada")
+    if resolucao_in <= 0: faltantes.append("resolução válida não informada")
+    if not any(abs(v) > 0 for v in medicoes):
+        st.error("Preencha as medições. Valores todos iguais a zero são tratados como não preenchidos.")
+        return
+    if resolucao_in <= 0:
+        st.error("Informe uma resolução positiva e confirmada para esta função/faixa antes de calcular.")
+        return
+    r = calcular(medicoes, u_certificado, resolucao_in, u_deriva, confianca)
+    if modo == "parcial":
+        st.write("Resultado calculado somente com as medições e os componentes atualmente informados.")
     else:
-        resolucao_padrao = float(res_doc[0]) if res_doc else 0.0
-
-    st.markdown("### Dados da medição")
-    valores_txt = st.text_input("Medições separadas por vírgula", placeholder="10.01, 10.03, 10.02", key="valores_medidos")
-    with st.expander("Componentes de incerteza Tipo B", expanded=True):
-        st.caption("Use valores de certificado, resolução e deriva na unidade selecionada. Não há valores de calibração ou deriva cadastrados automaticamente.")
-        x, y, z = st.columns(3)
-        cert_txt = x.number_input("Componente do certificado", min_value=0.0, value=0.0, format="%.6f", key=f"cert_{instrumento}_{grandeza}_{unidade}", help="Informe a incerteza do certificado na unidade da medição. Deixe zero apenas se não houver esse dado; o resultado será sinalizado como preliminar.")
-        resolucao = y.number_input("Resolução do instrumento", min_value=0.0, value=resolucao_padrao, format="%.6f", key=f"res_{instrumento}_{grandeza}_{unidade}", help="Paquímetro: resolução informada de 0,02 mm. Para os demais, informe a resolução indicada no instrumento/manual.")
-        deriva = z.number_input("Componente de deriva", min_value=0.0, value=0.0, format="%.6f", key=f"deriva_{instrumento}_{grandeza}_{unidade}", help="Informe um valor fundamentado no histórico de calibração. Não é estimado automaticamente.")
-
-    st.caption("A resolução é convertida em incerteza-padrão por distribuição retangular: resolução / √12. Os componentes inseridos devem estar na mesma unidade da medição.")
-    parcial_tab, completo_tab = st.tabs(["Resultado parcial", "Resultado completo (estimativa)"])
-
-    def calcular_resultado(vals, certificado, resol, deriv, conf):
-        media = float(np.mean(vals))
-        ua = float(np.std(vals, ddof=1) / np.sqrt(len(vals)))
-        u_res = float(resol / np.sqrt(12)) if resol > 0 else 0.0
-        ub = float(np.sqrt(certificado**2 + u_res**2 + deriv**2))
-        uc = float(np.sqrt(ua**2 + ub**2))
-        k = {"90%": 1.645, "95%": 2.0, "99%": 2.576}[conf]
-        U = k * uc
-        return {"media":media, "ua":ua, "ub":ub, "uc":uc, "k":k, "U":U}
-
-    try:
-        vals_preview = [float(v.strip().replace(",", ".")) for v in valores_txt.split(";") if v.strip()] if ";" in valores_txt else [float(v.strip().replace(",", ".")) for v in valores_txt.split(",") if v.strip()]
-        entrada_valida = len(vals_preview) >= 2
-    except ValueError:
-        vals_preview = []
-        entrada_valida = False
-
-    with parcial_tab:
-        st.write("Calcula usando as medições e os componentes de incerteza que você informou.")
-        calcular_parcial = st.button("Calcular resultado parcial", type="primary", key="calc_parcial", use_container_width=True)
-        if calcular_parcial:
-            if not entrada_valida:
-                st.error("Informe pelo menos duas medições numéricas. Separe os valores por vírgula ou ponto e vírgula.")
-            else:
-                r = calcular_resultado(vals_preview, cert_txt, resolucao, deriva, confianca)
-                faltantes = []
-                if cert_txt == 0: faltantes.append("incerteza do certificado de calibração não informada")
-                if resolucao == 0: faltantes.append("resolução não informada")
-                if deriva == 0: faltantes.append("deriva não informada")
-                preliminar = bool(faltantes)
-                resultado = f"{r['media']:.6f} ± {r['U']:.6f} {unidade}"
-                st.session_state.last = {"date":dt.datetime.now().strftime("%d/%m/%Y %H:%M"), "grandeza":grandeza, "unidade":unidade, "instrumento":instrumento, "confianca":confianca, "n":len(vals_preview), "media":r["media"], "ua":r["ua"], "ub":r["ub"], "uc":r["uc"], "k":r["k"], "U":r["U"], "resultado":resultado, "valores":", ".join(map(str,vals_preview)), "status":"Estimativa preliminar" if preliminar else "Calculado com os componentes informados", "faltantes":faltantes}
-                st.session_state.last_mode = "parcial"
-                st.rerun()
-        if st.session_state.get("last_mode") == "parcial" and "last" in st.session_state:
-            r = st.session_state.last
-            st.metric("Resultado parcial", r["resultado"])
-            if r.get("faltantes"):
-                st.warning("Estimativa preliminar. Componentes ausentes: " + "; ".join(r["faltantes"]) + ". Isso não significa que o instrumento inteiro esteja sem calibração; significa apenas que esses dados não foram informados nesta análise.")
-            st.caption(f"Média: {r['media']:.6f} {unidade} · Tipo A: {r['ua']:.6f} · Tipo B: {r['ub']:.6f} · Combinada: {r['uc']:.6f} · k = {r['k']:.3f}")
-            salvar = st.button("Salvar resultado parcial no histórico", key="save_partial", use_container_width=True)
-            if salvar:
-                with db() as con:
-                    con.execute("INSERT INTO med (user,date,grandeza,unidade,instrumento,confianca,n,media,ua,ub,uc,k,U,resultado,valores) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
-                        (user,r["date"],r["grandeza"],r["unidade"],r["instrumento"],r["confianca"],r["n"],r["media"],r["ua"],r["ub"],r["uc"],r["k"],r["U"],r["resultado"],r["valores"]))
-                    con.commit()
-                st.success("Resultado parcial salvo no histórico.")
-            st.download_button("Baixar relatório PDF", pdf_bytes(r,user), file_name="relatorio_incerteza_parcial.pdf", mime="application/pdf", key="pdf_partial", use_container_width=True)
-
-    with completo_tab:
-        st.write("Usa as medições, a resolução conhecida quando disponível e os componentes que você informou. Valores ausentes não são inventados.")
-        if res_doc:
-            st.info(f"Resolução cadastrada para {instrumento}: {res_doc[0]:g} {res_doc[1]}. Fonte: informação fornecida para este instrumento.")
-        else:
-            st.info("Não há resolução documentada cadastrada para este instrumento. Informe-a acima para que seja considerada no cálculo.")
-        calcular_completo = st.button("Calcular estimativa completa", type="primary", key="calc_completo", use_container_width=True)
-        if calcular_completo:
-            if not entrada_valida:
-                st.error("Informe pelo menos duas medições numéricas. Separe os valores por vírgula ou ponto e vírgula.")
-            elif resolucao <= 0:
-                st.error("Para a estimativa completa, informe uma resolução válida com base no instrumento ou manual.")
-            else:
-                r = calcular_resultado(vals_preview, cert_txt, resolucao, deriva, confianca)
-                faltantes = []
-                if cert_txt == 0: faltantes.append("incerteza do certificado de calibração não informada")
-                if deriva == 0: faltantes.append("deriva não informada")
-                preliminar = bool(faltantes)
-                resultado = f"{r['media']:.6f} ± {r['U']:.6f} {unidade}"
-                rec = {"date":dt.datetime.now().strftime("%d/%m/%Y %H:%M"), "grandeza":grandeza, "unidade":unidade, "instrumento":instrumento, "confianca":confianca, "n":len(vals_preview), "media":r["media"], "ua":r["ua"], "ub":r["ub"], "uc":r["uc"], "k":r["k"], "U":r["U"], "resultado":resultado, "valores":", ".join(map(str,vals_preview)), "status":"Estimativa preliminar" if preliminar else "Estimativa calculada", "faltantes":faltantes}
-                st.session_state.last_complete = rec
-                st.session_state.last_mode = "completo"
-                st.rerun()
-        if st.session_state.get("last_mode") == "completo" and "last_complete" in st.session_state:
-            r = st.session_state.last_complete
-            st.metric("Resultado completo estimado", r["resultado"])
-            if r.get("faltantes"):
-                st.warning("Estimativa preliminar. Componentes ausentes: " + "; ".join(r["faltantes"]) + ". O resultado usa a resolução disponível, mas não substitui certificado de calibração nem histórico de deriva.")
-            else:
-                st.success("Cálculo realizado com os componentes informados e a resolução cadastrada.")
-            st.caption(f"Média: {r['media']:.6f} {unidade} · Tipo A: {r['ua']:.6f} · Tipo B: {r['ub']:.6f} · Combinada: {r['uc']:.6f} · k = {r['k']:.3f}")
-            salvar = st.button("Salvar estimativa no histórico", key="save_complete", use_container_width=True)
-            if salvar:
-                with db() as con:
-                    con.execute("INSERT INTO med (user,date,grandeza,unidade,instrumento,confianca,n,media,ua,ub,uc,k,U,resultado,valores) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
-                        (user,r["date"],r["grandeza"],r["unidade"],r["instrumento"],r["confianca"],r["n"],r["media"],r["ua"],r["ub"],r["uc"],r["k"],r["U"],r["resultado"],r["valores"]))
-                    con.commit()
-                st.success("Estimativa salva no histórico.")
-            st.download_button("Baixar relatório PDF", pdf_bytes(r,user), file_name="relatorio_incerteza_estimativa.pdf", mime="application/pdf", key="pdf_complete", use_container_width=True)
-
-elif page=="Histórico":
-    st.subheader("Medições registradas")
-    if hist.empty: st.info("O histórico está vazio.")
+        st.write("Estimativa com a resolução cadastrada/confirmada e os componentes disponíveis. Não inventa valores de calibração nem de deriva.")
+    st.metric("Resultado", f"{r['media']:.9g} ± {r['U']:.6g} {unidade}")
+    a,b,c,d = st.columns(4)
+    a.metric("Média", f"{r['media']:.9g} {unidade}")
+    b.metric("Incerteza Tipo A", f"{r['ua']:.6g} {unidade}")
+    c.metric("Incerteza Tipo B", f"{r['ub']:.6g} {unidade}")
+    d.metric("Incerteza combinada", f"{r['uc']:.6g} {unidade}")
+    st.caption(f"Incerteza expandida U = {r['U']:.6g} {unidade}; fator de abrangência k = {r['k']}; confiança selecionada: {confianca}.")
+    if faltantes:
+        st.warning("Estimativa preliminar. Componentes ausentes: " + "; ".join(faltantes) + ". Isso não invalida automaticamente o instrumento, mas limita a completude deste cálculo.")
     else:
-        c1,c2=st.columns(2)
-        fg=c1.selectbox("Grandeza",["Todas"]+sorted(hist.grandeza.dropna().unique().tolist()))
-        fi=c2.selectbox("Instrumento",["Todos"]+sorted(hist.instrumento.dropna().unique().tolist()))
-        f=hist.copy()
-        if fg!="Todas": f=f[f.grandeza==fg]
-        if fi!="Todos": f=f[f.instrumento==fi]
-        st.dataframe(f[["id","date","grandeza","instrumento","n","resultado"]].rename(columns={"id":"ID","date":"Data","grandeza":"Grandeza","instrumento":"Instrumento","n":"Nº medições","resultado":"Resultado"}),use_container_width=True,hide_index=True)
-        st.download_button("Exportar histórico CSV",f.to_csv(index=False).encode("utf-8-sig"),"historico_incertezalab.csv","text/csv")
+        st.success("Componentes informados para este cálculo. A validade metrológica ainda depende do método e da documentação aplicável.")
 
-elif page=="Relatórios":
-    st.subheader("Exportar medição em PDF")
-    if hist.empty: st.info("Não há medições para exportar.")
-    else:
-        labels={f'#{r["id"]} • {r["date"]} • {r["resultado"]}':r for _,r in hist.iterrows()}
-        label=st.selectbox("Escolha a medição",list(labels.keys()))
-        x=labels[label]
-        record={"date":x["date"],"grandeza":x["grandeza"],"unidade":x["unidade"],"instrumento":x["instrumento"],"confianca":x["confianca"],"n":int(x["n"]),"media":float(x["media"]),"ua":float(x["ua"]),"ub":float(x["ub"]),"uc":float(x["uc"]),"k":float(x["k"]),"U":float(x["U"]),"resultado":x["resultado"],"valores":x["valores"]}
-        st.markdown(f"### {record['resultado']}")
-        st.caption(f"{record['grandeza']} • {record['instrumento']} • {record['date']}")
-        st.download_button("📄 Baixar PDF",pdf_bytes(record,user),file_name=f"relatorio_medicao_{x['id']}.pdf",mime="application/pdf",type="primary",use_container_width=True)
+    total = r['ua']**2 + u_certificado**2 + r['ures']**2 + u_deriva**2
+    if total > 0:
+        fontes = ["Tipo A", "Calibração", "Resolução", "Deriva"]
+        percentuais = [r['ua']**2/total*100, u_certificado**2/total*100, r['ures']**2/total*100, u_deriva**2/total*100]
+        import plotly.graph_objects as go
+        fig = go.Figure(go.Bar(x=fontes, y=percentuais, text=[f"{x:.1f}%" for x in percentuais], textposition="auto", marker_color=["#730000", "#C62828", "#F57C00", "#1565C0"]))
+        fig.update_layout(title="Contribuição percentual das fontes de incerteza", yaxis_title="Contribuição (%)", yaxis_range=[0,100], paper_bgcolor="white", plot_bgcolor="white", height=360)
+        st.plotly_chart(fig, use_container_width=True)
+        st.write(f"**Maior contribuição:** {fontes[int(np.argmax(percentuais))]} ({max(percentuais):.2f}%).")
 
-st.markdown("---")
-st.caption("IncertezaLab • MMG • Engenharia Mecânica • Versão 2.1")
+    registro = {"Data": datetime.datetime.now().strftime("%d/%m/%Y %H:%M"), "Instrumento": instrumento, "Identificação": identificacao or "Não informada", "Grandeza": grandeza, "Faixa": faixa, "Unidade": unidade, "Medições": ", ".join(f"{x:g}" for x in medicoes), "Resultado": f"{r['media']:.9g} ± {r['U']:.6g} {unidade}", "Status": "Estimativa preliminar" if faltantes else "Componentes informados"}
+    if st.button("Salvar no histórico", key=f"salvar_{modo}", use_container_width=True):
+        st.session_state.historico.append(registro)
+        st.success("Resultado salvo no histórico desta sessão.")
+
+with parcial_tab:
+    st.write("Usa os dados atualmente fornecidos, identificando os componentes que estão ausentes.")
+    if st.button("Calcular resultado parcial", key="calc_parcial", type="primary", use_container_width=True):
+        mostrar_resultado("parcial")
+with completo_tab:
+    st.write("Usa a resolução documentada para a função/faixa selecionada quando disponível. Dados de calibração e deriva continuam pendentes se não foram fornecidos.")
+    if st.button("Calcular estimativa completa", key="calc_completo", type="primary", use_container_width=True):
+        mostrar_resultado("completo")
+
+# ==========================
+# HISTÓRICO
+# ==========================
+
+if st.session_state.historico:
+
+    st.divider()
+
+    st.subheader(
+        "Histórico de Medições"
+    )
+
+    historico_df = pd.DataFrame(
+        st.session_state.historico
+    )
+
+    st.dataframe(
+        historico_df,
+        use_container_width=True
+    )
+
+st.markdown("""
+<hr>
+<div style="text-align:center;color:#666666;font-size:14px;">
+MMG • Sistema de Cálculo de Incerteza de Medição<br>
+Engenharia Mecânica<br>
+Versão 1.0
+</div>
+""", unsafe_allow_html=True)
+st.sidebar.markdown("---")
