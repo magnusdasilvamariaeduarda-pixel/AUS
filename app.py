@@ -3,7 +3,17 @@ import numpy as np
 import pandas as pd
 import plotly.express as px
 import datetime
+import io
 from pathlib import Path
+
+from reportlab.lib import colors
+from reportlab.lib.pagesizes import A4
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib.units import mm
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image as PDFImage
+import matplotlib
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
 
 st.set_page_config(
     page_title="MMG",
@@ -233,6 +243,7 @@ with col_b:
     identificacao = st.text_input("Identificação / patrimônio do instrumento (opcional)")
 
 st.subheader("Medições")
+st.caption("Os campos de medição e de incerteza aceitam somente valores numéricos. Use os controles numéricos para inserir os dados; textos ficam restritos à identificação opcional do instrumento.")
 quantidade = st.selectbox("Quantidade de medições", options=list(range(2, 21)), index=1, help="Escolha de 2 a 20 medições para esta análise.")
 medicoes = []
 cols = st.columns(3)
@@ -259,8 +270,6 @@ with st.expander("ℹ️ Como o MMG trata os dados técnicos"):
     - **Precisão do fabricante:** exibida como referência técnica; não é confundida automaticamente com incerteza de calibração.
     """)
 
-parcial_tab, completo_tab = st.tabs(["Resultado parcial", "Resultado completo estimado"])
-
 def calcular(vals, ucert, resol, deriva, conf):
     media = float(np.mean(vals))
     desvio = float(np.std(vals, ddof=1))
@@ -272,57 +281,253 @@ def calcular(vals, ucert, resol, deriva, conf):
     U = k * uc
     return {"media":media, "desvio":desvio, "ua":ua, "ures":ures, "ub":ub, "uc":uc, "k":k, "U":U}
 
-def mostrar_resultado(modo):
+
+def calcular_e_registrar(modo):
     faltantes = []
-    if u_certificado <= 0: faltantes.append("incerteza do certificado de calibração não informada")
-    if u_deriva <= 0: faltantes.append("deriva não informada")
-    if resolucao_in <= 0: faltantes.append("resolução válida não informada")
-    if not any(abs(v) > 0 for v in medicoes):
-        st.error("Preencha as medições. Valores todos iguais a zero são tratados como não preenchidos.")
+    if u_certificado <= 0:
+        faltantes.append("incerteza padrão de calibração não informada")
+    if u_deriva <= 0:
+        faltantes.append("componente de deriva não informado")
+    if resolucao_in <= 0:
+        faltantes.append("resolução válida não informada")
+    if len(medicoes) < 2:
+        st.error("Informe pelo menos duas medições numéricas.")
         return
     if resolucao_in <= 0:
         st.error("Informe uma resolução positiva e confirmada para esta função/faixa antes de calcular.")
         return
+
     r = calcular(medicoes, u_certificado, resolucao_in, u_deriva, confianca)
-    if modo == "parcial":
-        st.write("Resultado calculado somente com as medições e os componentes atualmente informados.")
-    else:
-        st.write("Estimativa com a resolução cadastrada/confirmada e os componentes disponíveis. Não inventa valores de calibração nem de deriva.")
-    st.metric("Resultado", f"{r['media']:.9g} ± {r['U']:.6g} {unidade}")
-    a,b,c,d = st.columns(4)
-    a.metric("Média", f"{r['media']:.9g} {unidade}")
-    b.metric("Incerteza Tipo A", f"{r['ua']:.6g} {unidade}")
-    c.metric("Incerteza Tipo B", f"{r['ub']:.6g} {unidade}")
-    d.metric("Incerteza combinada", f"{r['uc']:.6g} {unidade}")
-    st.caption(f"Incerteza expandida U = {r['U']:.6g} {unidade}; fator de abrangência k = {r['k']}; confiança selecionada: {confianca}.")
-    if faltantes:
-        st.warning("Estimativa preliminar. Componentes ausentes: " + "; ".join(faltantes) + ". Isso não invalida automaticamente o instrumento, mas limita a completude deste cálculo.")
+    registro = {
+        "Data": datetime.datetime.now().strftime("%d/%m/%Y %H:%M"),
+        "Instrumento": instrumento,
+        "Identificação": identificacao or "Não informada",
+        "Grandeza": grandeza,
+        "Faixa": faixa,
+        "Unidade": unidade,
+        "Medições": ", ".join(f"{x:g}" for x in medicoes),
+        "Resultado": f"{r['media']:.2f} ± {r['U']:.6g} {unidade}",
+        "Status": "Estimativa preliminar" if faltantes else "Componentes informados",
+    }
+    st.session_state["mmg_resultado_atual"] = {
+        **r,
+        "modo": modo,
+        "medicoes": list(medicoes),
+        "unidade": unidade,
+        "instrumento": instrumento,
+        "grandeza": grandeza,
+        "faixa": faixa,
+        "identificacao": identificacao or "Não informada",
+        "confianca": confianca,
+        "faltantes": faltantes,
+        "registro": registro,
+        "u_certificado": u_certificado,
+        "u_deriva": u_deriva,
+        "resolucao": resolucao_in,
+    }
+
+
+
+def gerar_pdf_analise(resultado):
+    """Gera um relatório PDF com os dados e o gráfico da análise metrológica."""
+    buffer = io.BytesIO()
+    doc = SimpleDocTemplate(
+        buffer, pagesize=A4,
+        rightMargin=18*mm, leftMargin=18*mm,
+        topMargin=16*mm, bottomMargin=16*mm,
+        title="Análise metrológica - MMG",
+        author="MMG - Sistema de Cálculo de Incerteza de Medição",
+    )
+    styles = getSampleStyleSheet()
+    styles.add(ParagraphStyle(name="MMGTitle", parent=styles["Title"], textColor=colors.HexColor("#730000"), spaceAfter=8))
+    styles.add(ParagraphStyle(name="MMGSection", parent=styles["Heading2"], textColor=colors.HexColor("#730000"), spaceBefore=10, spaceAfter=5))
+    story = [
+        Paragraph("MMG — Análise metrológica", styles["MMGTitle"]),
+        Paragraph("Relatório gerado a partir dos dados registrados no sistema.", styles["Normal"]),
+        Spacer(1, 8),
+        Paragraph("Identificação da medição", styles["MMGSection"]),
+    ]
+    meta = [
+        ["Data do relatório", datetime.datetime.now().strftime("%d/%m/%Y %H:%M")],
+        ["Instrumento", str(resultado.get("instrumento", "Não informado"))],
+        ["Identificação", str(resultado.get("identificacao", "Não informada"))],
+        ["Grandeza / função", str(resultado.get("grandeza", "Não informada"))],
+        ["Faixa", str(resultado.get("faixa", "Não informada"))],
+        ["Unidade", str(resultado.get("unidade", ""))],
+        ["Nível selecionado", str(resultado.get("confianca", "Não informado"))],
+        ["Status", "Estimativa preliminar" if resultado.get("faltantes") else "Componentes informados; validar adequação ao uso"],
+    ]
+    table = Table(meta, colWidths=[45*mm, 115*mm], hAlign="LEFT")
+    table.setStyle(TableStyle([
+        ("BACKGROUND", (0,0), (0,-1), colors.HexColor("#F3E8E8")),
+        ("TEXTCOLOR", (0,0), (0,-1), colors.HexColor("#730000")),
+        ("GRID", (0,0), (-1,-1), 0.4, colors.HexColor("#D8D8D8")),
+        ("VALIGN", (0,0), (-1,-1), "TOP"),
+        ("FONTNAME", (0,0), (0,-1), "Helvetica-Bold"),
+        ("FONTSIZE", (0,0), (-1,-1), 8.5),
+        ("LEFTPADDING", (0,0), (-1,-1), 6),
+        ("RIGHTPADDING", (0,0), (-1,-1), 6),
+        ("TOPPADDING", (0,0), (-1,-1), 5),
+        ("BOTTOMPADDING", (0,0), (-1,-1), 5),
+    ]))
+    story.extend([table, Spacer(1, 8), Paragraph("Resultados", styles["MMGSection"])])
+    unit = resultado.get("unidade", "")
+    res = [
+        ["Parâmetro", "Resultado", "Unidade"],
+        ["Valor médio", f"{resultado['media']:.2f}", unit],
+        ["Desvio-padrão amostral", f"{resultado['desvio']:.6g}", unit],
+        ["Incerteza Tipo A", f"{resultado['ua']:.6g}", unit],
+        ["Incerteza Tipo B combinada", f"{resultado['ub']:.6g}", unit],
+        ["Incerteza combinada", f"{resultado['uc']:.6g}", unit],
+        ["Fator de abrangência (k)", f"{resultado['k']:.3f}", ""],
+        ["Incerteza expandida (U)", f"± {resultado['U']:.6g}", unit],
+    ]
+    t2 = Table(res, colWidths=[70*mm, 50*mm, 40*mm], repeatRows=1, hAlign="LEFT")
+    t2.setStyle(TableStyle([
+        ("BACKGROUND", (0,0), (-1,0), colors.HexColor("#730000")),
+        ("TEXTCOLOR", (0,0), (-1,0), colors.white),
+        ("GRID", (0,0), (-1,-1), 0.4, colors.HexColor("#D8D8D8")),
+        ("ROWBACKGROUNDS", (0,1), (-1,-1), [colors.white, colors.HexColor("#FAF6F6")]),
+        ("FONTNAME", (0,0), (-1,0), "Helvetica-Bold"),
+        ("FONTSIZE", (0,0), (-1,-1), 8.5),
+        ("ALIGN", (1,1), (-1,-1), "LEFT"),
+        ("TOPPADDING", (0,0), (-1,-1), 5),
+        ("BOTTOMPADDING", (0,0), (-1,-1), 5),
+    ]))
+    story.extend([t2, Spacer(1, 8), Paragraph("Medições individuais", styles["MMGSection"])])
+    vals = resultado.get("medicoes", [])
+    readings = [["Nº da medição", "Valor", "Unidade"]] + [[str(i), f"{v:.9g}", unit] for i, v in enumerate(vals, start=1)]
+    tr = Table(readings, colWidths=[45*mm, 65*mm, 50*mm], repeatRows=1, hAlign="LEFT")
+    tr.setStyle(TableStyle([
+        ("BACKGROUND", (0,0), (-1,0), colors.HexColor("#730000")),
+        ("TEXTCOLOR", (0,0), (-1,0), colors.white),
+        ("GRID", (0,0), (-1,-1), 0.4, colors.HexColor("#D8D8D8")),
+        ("FONTSIZE", (0,0), (-1,-1), 8.5),
+        ("TOPPADDING", (0,0), (-1,-1), 4),
+        ("BOTTOMPADDING", (0,0), (-1,-1), 4),
+    ]))
+    story.extend([tr, Spacer(1, 10), Paragraph("Gráfico de variação e incerteza expandida", styles["MMGSection"])])
+
+    # Cria o gráfico no PDF com os mesmos dados do cálculo.
+    fig, ax = plt.subplots(figsize=(8.0, 3.3))
+    x = list(range(1, len(vals) + 1))
+    media, U = resultado["media"], resultado["U"]
+    ax.axhspan(media-U, media+U, color="#F2B134", alpha=0.25, label="Faixa x̄ ± U")
+    ax.axhline(media, color="#730000", linewidth=1.8, linestyle="--", label=f"Média = {media:.6g} {unit}")
+    ax.plot(x, vals, color="#176B70", marker="o", linewidth=1.8, label="Medições")
+    ax.set_xlabel("Ordem da medição")
+    ax.set_ylabel(f"Valor medido ({unit})")
+    ax.set_xticks(x)
+    ax.grid(True, alpha=0.2)
+    ax.legend(loc="best", fontsize=8)
+    fig.tight_layout()
+    img_buf = io.BytesIO()
+    fig.savefig(img_buf, format="png", dpi=160, bbox_inches="tight")
+    plt.close(fig)
+    img_buf.seek(0)
+    story.append(PDFImage(img_buf, width=165*mm, height=68*mm))
+    story.append(Spacer(1, 6))
+    story.append(Paragraph(
+        "A faixa colorida representa a média ± incerteza expandida. Os pontos correspondem às leituras informadas. "
+        "O nível de confiança e o fator k devem ser interpretados conforme o método de avaliação adotado.",
+        styles["BodyText"]
+    ))
+    if resultado.get("faltantes"):
+        story.extend([Spacer(1, 8), Paragraph("Atenção: análise preliminar", styles["MMGSection"]),
+                      Paragraph("Componentes não informados: " + "; ".join(resultado["faltantes"]) + ". A ausência de informação não significa que o componente real seja zero.", styles["BodyText"])])
+    story.extend([Spacer(1, 8), Paragraph("Relatório de apoio à análise metrológica. Verifique a adequação do método, dos dados e dos critérios aplicáveis antes de usar o resultado para decisões de conformidade.", styles["Italic"])])
+    doc.build(story)
+    buffer.seek(0)
+    return buffer.getvalue()
+
+
+def mostrar_resultado_principal(resultado):
+    if resultado.get("faltantes"):
+        st.warning("Estimativa preliminar. Componentes ausentes: " + "; ".join(resultado["faltantes"]) + ". Isso não invalida automaticamente o instrumento, mas limita a completude deste cálculo.")
     else:
         st.success("Componentes informados para este cálculo. A validade metrológica ainda depende do método e da documentação aplicável.")
-
-    total = r['ua']**2 + u_certificado**2 + r['ures']**2 + u_deriva**2
-    if total > 0:
-        fontes = ["Tipo A", "Calibração", "Resolução", "Deriva"]
-        percentuais = [r['ua']**2/total*100, u_certificado**2/total*100, r['ures']**2/total*100, u_deriva**2/total*100]
-        import plotly.graph_objects as go
-        fig = go.Figure(go.Bar(x=fontes, y=percentuais, text=[f"{x:.1f}%" for x in percentuais], textposition="auto", marker_color=["#730000", "#C62828", "#F57C00", "#1565C0"]))
-        fig.update_layout(title="Contribuição percentual das fontes de incerteza", yaxis_title="Contribuição (%)", yaxis_range=[0,100], paper_bgcolor="white", plot_bgcolor="white", height=360)
-        st.plotly_chart(fig, use_container_width=True)
-        st.write(f"**Maior contribuição:** {fontes[int(np.argmax(percentuais))]} ({max(percentuais):.2f}%).")
-
-    registro = {"Data": datetime.datetime.now().strftime("%d/%m/%Y %H:%M"), "Instrumento": instrumento, "Identificação": identificacao or "Não informada", "Grandeza": grandeza, "Faixa": faixa, "Unidade": unidade, "Medições": ", ".join(f"{x:g}" for x in medicoes), "Resultado": f"{r['media']:.9g} ± {r['U']:.6g} {unidade}", "Status": "Estimativa preliminar" if faltantes else "Componentes informados"}
-    if st.button("Salvar no histórico", key=f"salvar_{modo}", use_container_width=True):
-        st.session_state.historico.append(registro)
+    c1, c2 = st.columns(2)
+    c1.metric("Valor médio", f"{resultado['media']:.2f} {resultado['unidade']}")
+    c2.metric("Incerteza expandida", f"± {resultado['U']:.6g} {resultado['unidade']}")
+    st.caption("A média é exibida com duas casas decimais. A incerteza mantém precisão adicional para evitar ocultar informação relevante.")
+    if st.button("Salvar no histórico", key=f"salvar_{resultado['modo']}", use_container_width=True):
+        st.session_state.historico.append(resultado["registro"])
         st.success("Resultado salvo no histórico desta sessão.")
 
-with parcial_tab:
-    st.write("Usa os dados atualmente fornecidos, identificando os componentes que estão ausentes.")
-    if st.button("Calcular resultado parcial", key="calc_parcial", type="primary", use_container_width=True):
-        mostrar_resultado("parcial")
-with completo_tab:
-    st.write("Usa a resolução documentada para a função/faixa selecionada quando disponível. Dados de calibração e deriva continuam pendentes se não foram fornecidos.")
-    if st.button("Calcular estimativa completa", key="calc_completo", type="primary", use_container_width=True):
-        mostrar_resultado("completo")
+
+st.markdown("### Resultados da medição")
+resultado_tab, analise_tab = st.tabs(["Resultado principal", "Análise metrológica"])
+with resultado_tab:
+    parcial_tab, completo_tab = st.tabs(["Resultado parcial", "Resultado completo estimado"])
+    with parcial_tab:
+        st.write("Calcula com os dados fornecidos e identifica os componentes que ainda não foram informados.")
+        if st.button("Calcular resultado parcial", key="calc_parcial", type="primary", use_container_width=True):
+            calcular_e_registrar("parcial")
+        resultado = st.session_state.get("mmg_resultado_atual")
+        if resultado and resultado.get("modo") == "parcial":
+            mostrar_resultado_principal(resultado)
+    with completo_tab:
+        st.write("Usa a resolução documentada para a função/faixa selecionada, quando disponível. Valores de calibração e deriva não são inventados.")
+        if st.button("Calcular estimativa completa", key="calc_completo", type="primary", use_container_width=True):
+            calcular_e_registrar("completo")
+        resultado = st.session_state.get("mmg_resultado_atual")
+        if resultado and resultado.get("modo") == "completo":
+            mostrar_resultado_principal(resultado)
+
+with analise_tab:
+    resultado = st.session_state.get("mmg_resultado_atual")
+    if not resultado:
+        st.info("Calcule primeiro um resultado parcial ou uma estimativa completa. Os detalhes e o gráfico aparecerão aqui.")
+    else:
+        st.caption(f"{resultado['instrumento']} · {resultado['grandeza']} · Faixa: {resultado['faixa']} · Unidade: {resultado['unidade']}")
+        st.subheader("Componentes de incerteza")
+        a, b, c = st.columns(3)
+        a.metric("Incerteza Tipo A", f"{resultado['ua']:.6g} {resultado['unidade']}")
+        b.metric("Incerteza Tipo B", f"{resultado['ub']:.6g} {resultado['unidade']}")
+        c.metric("Incerteza combinada", f"{resultado['uc']:.6g} {resultado['unidade']}")
+        st.caption(f"Incerteza expandida U = {resultado['U']:.6g} {resultado['unidade']} · k = {resultado['k']:.3f} · nível selecionado: {resultado['confianca']}.")
+        st.markdown("#### Gráfico de variação das medições e incerteza expandida")
+        import plotly.graph_objects as go
+        leituras = resultado["medicoes"]
+        media = resultado["media"]
+        U = resultado["U"]
+        fig = go.Figure()
+        fig.add_hrect(y0=media-U, y1=media+U, fillcolor="#F2B134", opacity=0.22,
+                      line_width=0, annotation_text="Faixa x̄ ± U", annotation_position="top left")
+        fig.add_hline(y=media, line_color="#730000", line_width=2,
+                      annotation_text=f"Média = {media:.6g} {resultado['unidade']}", annotation_position="bottom right")
+        fig.add_trace(go.Scatter(
+            x=list(range(1, len(leituras)+1)), y=leituras, mode="lines+markers",
+            name="Medições", line=dict(color="#176B70", width=2),
+            marker=dict(size=9),
+            hovertemplate="Medição %{x}: %{y:.9g} " + resultado["unidade"] + "<extra></extra>"
+        ))
+        fig.update_layout(
+            height=430, paper_bgcolor="white", plot_bgcolor="white",
+            font_color="#222222", margin=dict(l=20, r=20, t=55, b=25),
+            xaxis_title="Ordem da medição", yaxis_title=f"Valor medido ({resultado['unidade']})",
+            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+            yaxis=dict(gridcolor="#E8EDF2"), xaxis=dict(dtick=1, gridcolor="#F2F2F2")
+        )
+        st.plotly_chart(fig, use_container_width=True)
+        st.caption("A faixa colorida representa média ± incerteza expandida. Os pontos mostram as leituras reais; a linha entre eles apenas indica a ordem de aquisição, não uma onda contínua.")
+        st.markdown("#### Dados usados no cálculo")
+        detalhes = pd.DataFrame({"Componente": ["Tipo A (incerteza-padrão da média)", "Calibração", "Resolução (u = resolução/√12)", "Deriva", "Tipo B combinado", "Incerteza combinada", "Incerteza expandida"],
+                                 "Valor": [resultado["ua"], resultado["u_certificado"], resultado["ures"], resultado["u_deriva"], resultado["ub"], resultado["uc"], resultado["U"]],
+                                 "Unidade": [resultado["unidade"]]*7})
+        st.dataframe(detalhes, use_container_width=True, hide_index=True)
+        if resultado.get("faltantes"):
+            st.warning("Esta análise é preliminar. Dados ausentes: " + "; ".join(resultado["faltantes"]) + ". Consulte a documentação aplicável antes de usar o resultado para decisões de conformidade.")
+
+        st.download_button(
+            label="📄 Baixar análise metrológica em PDF",
+            data=gerar_pdf_analise(resultado),
+            file_name=f"analise_metrologica_MMG_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf",
+            mime="application/pdf",
+            type="primary",
+            use_container_width=True,
+            help="Exporta resultados, componentes de incerteza, medições e gráfico para PDF."
+        )
 
 # ==========================
 # HISTÓRICO
@@ -354,3 +559,4 @@ Versão 1.0
 </div>
 """, unsafe_allow_html=True)
 st.sidebar.markdown("---")
+
